@@ -64,7 +64,7 @@ named `Sample_1`. A `samples.csv` in the format above is generated for the zip.
 
 Each sample's window is `[floor(Begin) to the minute, ceil(End) to the minute]`, both ends
 inclusive. Example: 13:30:30–13:40:01 → files from 13:30:00 to 13:41:00. The window shows
-the rounded range live under the Begin/End fields.
+the rounded range live in the sheet subtitle and in each sample row.
 
 ## Data layout (from the instruction and a screenshot)
 

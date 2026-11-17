@@ -41,8 +41,9 @@ for the data folder and the belt). Below it, the report sheet, which becomes
 - Cancel stops a run and leaves nothing behind. After a cancel, a failure or no spectra found,
   the sheet shows the blank rows again with the reason underneath.
 
-The sheet keeps the last result until a field changes. The fields are saved after each
-successful run, in `%LOCALAPPDATA%\SpectraCollector\settings.json`.
+The sheet keeps the last result until a field changes, or until the CSV on disk or the data
+folder no longer gives the same samples when you come back to the window. The fields are
+saved after each successful run, in `%LOCALAPPDATA%\SpectraCollector\settings.json`.
 
 ### CSV format
 
@@ -160,6 +161,11 @@ The window could only be built here, never run. On first start check:
 12. Bahnschrift semibold (sheet title, sample names, stamp) renders as a real semibold, not a
     smeared synthetic bold; `collect-report.txt` and the zip contents use Cascadia Mono, or
     Consolas where it is missing.
+13. At 680x560 with three spectrometers, or a sample crossing midnight: the Note column
+    (the ⚠ marks) stays visible.
+14. After a run, save the CSV with a bad time in Excel and switch back: the sheet shows the
+    problem and Collect is disabled. After a run, go to "Open folder" and back: the result
+    stays.
 
 In the field, on a real analyzer:
 
