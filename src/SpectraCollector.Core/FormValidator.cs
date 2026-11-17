@@ -17,8 +17,11 @@ public static class FormValidator
     private const string SingleCsvName = "samples.csv";
     private const string DayFormat = "yyyy-MM-dd HH:mm:ss";
     private const string TimeFormat = "HH:mm:ss";
+    private static readonly UTF8Encoding Utf8NoBom = new(false);
 
-    private sealed record SampleSource(IReadOnlyList<Sample>? Samples, string CsvName, string CsvText);
+    private sealed record SampleSource(IReadOnlyList<Sample>? Samples, string CsvName, byte[] CsvBytes);
+
+    private static SampleSource NoSamples { get; } = new(null, string.Empty, []);
 
     /// <summary>Validates every field; never throws, and reports every applicable problem.</summary>
     public static FormCheck Check(FormInput input)
@@ -35,7 +38,7 @@ public static class FormValidator
         }
 
         var request = new CollectRequest(
-            source.Samples, source.CsvName, source.CsvText, new DataLayout(input.DataRoot, input.Belt), input.OutputDir);
+            source.Samples, source.CsvName, source.CsvBytes, new DataLayout(input.DataRoot, input.Belt), input.OutputDir);
         return new FormCheck(request, problems, hint);
     }
 
@@ -45,17 +48,17 @@ public static class FormValidator
         var end = ReadTime(input.EndText, "End", "2026-11-06 13:40:00", problems, out var endValue);
         if (!begin || !end)
         {
-            return new SampleSource(null, string.Empty, string.Empty);
+            return NoSamples;
         }
 
         if (endValue < beginValue)
         {
             problems.Add("End is earlier than Begin.");
-            return new SampleSource(null, string.Empty, string.Empty);
+            return NoSamples;
         }
 
         IReadOnlyList<Sample> samples = [new Sample(SingleSampleName, beginValue, endValue)];
-        return new SampleSource(samples, SingleCsvName, SampleTable.ToCsv(samples));
+        return new SampleSource(samples, SingleCsvName, Utf8NoBom.GetBytes(SampleTable.ToCsv(samples)));
     }
 
     private static bool ReadTime(string text, string label, string example, List<string> problems, out DateTime value)
@@ -78,42 +81,47 @@ public static class FormValidator
 
     private static SampleSource ReadCsv(string? path, List<string> problems)
     {
-        var none = new SampleSource(null, string.Empty, string.Empty);
         if (string.IsNullOrWhiteSpace(path))
         {
             problems.Add("Choose a CSV file with sample times.");
-            return none;
+            return NoSamples;
         }
 
         if (!File.Exists(path))
         {
             problems.Add("CSV file not found.");
-            return none;
+            return NoSamples;
         }
 
-        string text;
+        byte[] bytes;
         try
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-            text = reader.ReadToEnd();
+            bytes = ReadShared(path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             problems.Add($"Cannot read the CSV file: {e.Message.TrimEnd().TrimEnd('.')}.");
-            return none;
+            return NoSamples;
         }
 
         try
         {
-            var samples = SampleTable.Parse(new StringReader(text));
-            return new SampleSource(samples, Path.GetFileName(path), text);
+            var samples = SampleTable.Parse(new StringReader(CsvDecoder.Decode(bytes)));
+            return new SampleSource(samples, Path.GetFileName(path), bytes);
         }
         catch (SampleTimesException e)
         {
             problems.Add(e.Message);
-            return none;
+            return NoSamples;
         }
+    }
+
+    private static byte[] ReadShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
     }
 
     private static List<string> OutputProblems(FormInput input)

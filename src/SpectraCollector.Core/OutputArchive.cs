@@ -10,13 +10,14 @@ public static class OutputArchive
 
     /// <summary>Writes the zip into <paramref name="outputDir"/> and returns its path.</summary>
     /// <param name="baseName">Zip name without extension; also the folder inside the zip.</param>
+    /// <param name="csvBytes">Written verbatim, so the engineer gets back exactly the file they gave.</param>
     /// <param name="filesWritten">Receives the running count after each spectrum is written.</param>
     public static string Write(
         string outputDir,
         string baseName,
         IReadOnlyList<FoundSpectrum> files,
         string csvName,
-        string csvText,
+        byte[] csvBytes,
         string reportText,
         IProgress<int>? filesWritten,
         CancellationToken ct)
@@ -30,8 +31,8 @@ public static class OutputArchive
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Create))
             {
                 WriteSpectra(zip, baseName, files, filesWritten, ct);
-                WriteText(zip, baseName + "/" + csvName, csvText);
-                WriteText(zip, baseName + "/collect-report.txt", reportText);
+                WriteEntry(zip, baseName + "/" + csvName, csvBytes);
+                WriteEntry(zip, baseName + "/collect-report.txt", Utf8NoBom.GetBytes(reportText));
             }
 
             File.Move(partialPath, zipPath);
@@ -114,10 +115,10 @@ public static class OutputArchive
     private static bool IsReadFailure(Exception e) =>
         e is IOException or UnauthorizedAccessException or InvalidDataException;
 
-    private static void WriteText(ZipArchive zip, string entryName, string text)
+    private static void WriteEntry(ZipArchive zip, string entryName, byte[] content)
     {
         var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
-        using var writer = new StreamWriter(entry.Open(), Utf8NoBom);
-        writer.Write(text);
+        using var target = entry.Open();
+        target.Write(content);
     }
 }

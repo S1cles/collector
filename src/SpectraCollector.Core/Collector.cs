@@ -3,8 +3,10 @@ using System.Globalization;
 namespace SpectraCollector.Core;
 
 /// <summary>Everything one collection needs.</summary>
+/// <param name="CsvName">The name the sample times get in the zip: the input CSV's own name, or samples.csv.</param>
+/// <param name="CsvBytes">The sample times exactly as they go into the zip: the input file's bytes, unconverted.</param>
 public sealed record CollectRequest(
-    IReadOnlyList<Sample> Samples, string CsvName, string CsvText, DataLayout Layout, string OutputDir);
+    IReadOnlyList<Sample> Samples, string CsvName, byte[] CsvBytes, DataLayout Layout, string OutputDir);
 
 /// <summary>The stage of a collection that a <see cref="CollectProgress"/> describes.</summary>
 public enum CollectPhase
@@ -53,7 +55,7 @@ public static class Collector
             baseName,
             scan.Files,
             request.CsvName,
-            request.CsvText,
+            request.CsvBytes,
             report.ToText(),
             new DelegateProgress(done => progress?.Report(new CollectProgress(CollectPhase.Writing, done, total))),
             ct);

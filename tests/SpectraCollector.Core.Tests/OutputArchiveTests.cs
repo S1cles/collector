@@ -23,8 +23,10 @@ public sealed class OutputArchiveTests : IDisposable
         return new FoundSpectrum(name, path, null);
     }
 
+    private static readonly byte[] CsvBytes = [0xEF, 0xBB, 0xBF, (byte)'a', (byte)';', 0xD0, (byte)'\r', (byte)'\n'];
+
     private string Write(string dir, IReadOnlyList<FoundSpectrum> files, IProgress<int>? progress = null, CancellationToken ct = default) =>
-        OutputArchive.Write(dir, "spectra_x", files, "samples.csv", "a,b\n", "report", progress, ct);
+        OutputArchive.Write(dir, "spectra_x", files, "samples.csv", CsvBytes, "report", progress, ct);
 
     [Fact]
     public void Zip_has_spectra_csv_and_report_with_identical_bytes()
@@ -53,7 +55,9 @@ public sealed class OutputArchiveTests : IDisposable
         }
 
         using var csv = zip.GetEntry("spectra_x/samples.csv")!.Open();
-        Assert.Equal(new byte[] { (byte)'a', (byte)',', (byte)'b', (byte)'\n' }, new BinaryReader(csv).ReadBytes(4));
+        using var csvCopy = new MemoryStream();
+        csv.CopyTo(csvCopy);
+        Assert.Equal(CsvBytes, csvCopy.ToArray());
         Assert.Empty(Directory.GetFiles(_out.FullName, "*.partial"));
     }
 

@@ -1,3 +1,4 @@
+using System.Text;
 using SpectraCollector.Core;
 
 namespace SpectraCollector.Core.Tests;
@@ -23,6 +24,17 @@ public sealed class FormValidatorTests : IDisposable
         return path;
     }
 
+    private string WriteCsvBytes(string name, byte[] bytes)
+    {
+        var path = Path.Combine(_dir.FullName, name);
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
+    /// <summary>One sample named Šlakas, saved by Excel in Windows-1257 (Š is 0xD0).</summary>
+    internal static readonly byte[] Cp1257Csv =
+        [.. "Sample;Begin;End\r\n"u8, 0xD0, .. "lakas;2026-11-06 13:05:00;2026-11-06 13:12:00\r\n"u8];
+
     private const string ThreeSamples =
         "Sample;Exposition;Begin;End;Material\n" +
         "A;;2026-11-06 13:05:00;2026-11-06 13:12:00;\n" +
@@ -41,7 +53,7 @@ public sealed class FormValidatorTests : IDisposable
         var sample = Assert.Single(request.Samples);
         Assert.Equal("Sample_1", sample.Name);
         Assert.Equal("samples.csv", request.CsvName);
-        Assert.Equal(SampleTable.ToCsv(request.Samples), request.CsvText);
+        Assert.Equal(new UTF8Encoding(false).GetBytes(SampleTable.ToCsv(request.Samples)), request.CsvBytes);
         Assert.Equal(input.OutputDir, request.OutputDir);
         Assert.Equal(new DataLayout(input.DataRoot, @"Main\Belt_1"), request.Layout);
         Assert.Equal("Files from 13:30:00 to 13:41:00", check.WindowHint);
@@ -92,7 +104,7 @@ public sealed class FormValidatorTests : IDisposable
     }
 
     [Fact]
-    public void Csv_Valid_UsesFileNameAndText()
+    public void Csv_Valid_UsesFileNameAndBytes()
     {
         var path = WriteCsv("times.csv", ThreeSamples);
 
@@ -102,8 +114,50 @@ public sealed class FormValidatorTests : IDisposable
         var request = check.Request!;
         Assert.Equal(3, request.Samples.Count);
         Assert.Equal("times.csv", request.CsvName);
-        Assert.Equal(ThreeSamples, request.CsvText);
+        Assert.Equal(File.ReadAllBytes(path), request.CsvBytes);
         Assert.Equal("3 samples, files from 13:05:00 to 15:21:00", check.WindowHint);
+    }
+
+    [Fact]
+    public void Csv_AnsiFile_IsReadInTheCultureCodePageAndKeptAsBytes()
+    {
+        var path = WriteCsvBytes("ansi.csv", Cp1257Csv);
+
+        FormCheck check;
+        using (new CultureScope("lt-LT"))
+        {
+            check = FormValidator.Check(Csv(path));
+        }
+
+        Assert.Empty(check.Problems);
+        Assert.Equal("Šlakas", Assert.Single(check.Request!.Samples).Name);
+        Assert.Equal(Cp1257Csv, check.Request.CsvBytes);
+    }
+
+    [Fact]
+    public void Csv_Utf8WithoutBom_IsReadAsUtf8()
+    {
+        var path = WriteCsvBytes("utf8.csv", "Sample;Begin;End\nŠlakas;2026-11-06 13:05;2026-11-06 13:12\n"u8.ToArray());
+
+        FormCheck check;
+        using (new CultureScope("lt-LT"))
+        {
+            check = FormValidator.Check(Csv(path));
+        }
+
+        Assert.Equal("Šlakas", Assert.Single(check.Request!.Samples).Name);
+    }
+
+    [Fact]
+    public void Csv_Utf16WithBom_IsReadInThatEncoding()
+    {
+        var text = "Sample;Begin;End\nŠlakas;2026-11-06 13:05;2026-11-06 13:12\n";
+        var path = WriteCsvBytes("utf16.csv", [.. Encoding.Unicode.Preamble, .. Encoding.Unicode.GetBytes(text)]);
+
+        var check = FormValidator.Check(Csv(path));
+
+        Assert.Equal("Šlakas", Assert.Single(check.Request!.Samples).Name);
+        Assert.Equal(File.ReadAllBytes(path), check.Request.CsvBytes);
     }
 
     [Fact]
