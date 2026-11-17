@@ -86,6 +86,19 @@ public sealed class OutputArchiveTests : IDisposable
     }
 
     [Fact]
+    public void Folder_inside_the_zip_is_named_after_the_final_zip()
+    {
+        var files = new[] { Loose(1, Hour.AddMinutes(1)) };
+        Write(_out.FullName, files);
+
+        var second = Write(_out.FullName, files);
+
+        using var zip = ZipFile.OpenRead(second);
+        Assert.All(zip.Entries, e => Assert.StartsWith("spectra_x_2/", e.FullName));
+        Assert.NotNull(zip.GetEntry("spectra_x_2/samples.csv"));
+    }
+
+    [Fact]
     public void Progress_counts_each_written_spectrum()
     {
         var reported = new List<int>();
@@ -105,9 +118,35 @@ public sealed class OutputArchiveTests : IDisposable
 
         Assert.IsType<FileNotFoundException>(e.InnerException, exactMatch: false);
         Assert.Equal(
-            $"Cannot read {bad.Name.FileName} from {bad.SourcePath}: {e.InnerException!.Message.TrimEnd('.')}.", e.Message);
+            $"Cannot read {bad.Name.FileName} from {bad.SourcePath}: {e.InnerException!.Message.TrimEnd('.')}."
+                + " If the spectra archiver packed this hour during collection, run it again.",
+            e.Message);
         Assert.DoesNotContain("..", e.Message);
         Assert.Empty(Directory.GetFileSystemEntries(_out.FullName));
+    }
+
+    [Fact]
+    public void Missing_source_folder_gets_the_retry_hint()
+    {
+        var bad = Loose(1, Hour.AddMinutes(1)) with { SourcePath = Path.Combine(_out.FullName, "gone", "x.csv") };
+
+        var e = Assert.Throws<SpectrumCopyException>(() => OutputArchive.Copy(bad, new MemoryStream(), CancellationToken.None));
+
+        Assert.IsType<DirectoryNotFoundException>(e.InnerException);
+        Assert.EndsWith(" If the spectra archiver packed this hour during collection, run it again.", e.Message);
+    }
+
+    [Fact]
+    public void Corrupt_archive_gets_no_retry_hint()
+    {
+        var corrupt = Path.Combine(_out.FullName, "corrupt.zip");
+        File.WriteAllBytes(corrupt, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        var bad = Loose(1, Hour.AddMinutes(1)) with { SourcePath = corrupt, EntryName = "x.csv" };
+
+        var e = Assert.Throws<SpectrumCopyException>(() => OutputArchive.Copy(bad, new MemoryStream(), CancellationToken.None));
+
+        Assert.IsType<InvalidDataException>(e.InnerException);
+        Assert.DoesNotContain("run it again", e.Message);
     }
 
     [Fact]

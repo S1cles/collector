@@ -25,10 +25,16 @@ public sealed class ArchiveUnreadableException(string path, Exception inner)
         inner);
 
 /// <summary>A spectrum could not be read while it was being copied into the output zip.</summary>
+/// <remarks>A file that has gone missing since the search was most likely packed by the archiver, so the message suggests a rerun.</remarks>
 public sealed class SpectrumCopyException(string fileName, string sourcePath, Exception inner)
-    : CollectorException($"Cannot read {fileName} from {sourcePath}: {TrimPeriod(inner.Message)}.", inner)
+    : CollectorException($"Cannot read {fileName} from {sourcePath}: {TrimPeriod(inner.Message)}.{RetryHint(inner)}", inner)
 {
     private static string TrimPeriod(string message) => message.EndsWith('.') ? message[..^1] : message;
+
+    private static string RetryHint(Exception inner) =>
+        inner is FileNotFoundException or DirectoryNotFoundException
+            ? " If the spectra archiver packed this hour during collection, run it again."
+            : string.Empty;
 }
 
 /// <summary>The chosen output folder is inside the analyzer data folder, which must never be written to.</summary>

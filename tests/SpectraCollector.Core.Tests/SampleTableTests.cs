@@ -111,13 +111,14 @@ public class SampleTableTests
     {
         var text = "Sample;Begin;End\nA;2026-11-06 13:05;2026-11-06 13:12\nB;nonsense;2026-11-06 13:12\n";
 
-        Assert.Equal("Line 3: Begin is not a valid time.", MessageOf(text));
+        Assert.Equal("Line 3: Begin is not a valid time. Use 2026-11-06 13:30:00.", MessageOf(text));
     }
 
     [Fact]
     public void Parse_ReportsBadEndTime()
     {
-        Assert.Equal("Line 2: End is not a valid time.", MessageOf("Sample;Begin;End\nA;2026-11-06 13:05;\n"));
+        Assert.Equal(
+            "Line 2: End is not a valid time. Use 2026-11-06 13:40:00.", MessageOf("Sample;Begin;End\nA;2026-11-06 13:05;\n"));
     }
 
     [Fact]

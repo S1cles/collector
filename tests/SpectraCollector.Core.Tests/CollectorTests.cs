@@ -94,10 +94,26 @@ public sealed class CollectorTests : IDisposable
     }
 
     [Fact]
-    public async Task Nothing_found_throws_and_creates_no_zip()
+    public async Task Nothing_found_throws_naming_the_folder_and_creates_no_zip()
     {
-        await Assert.ThrowsAsync<NothingFoundException>(() => Collector.RunAsync(
+        var e = await Assert.ThrowsAsync<NothingFoundException>(() => Collector.RunAsync(
             Request(new Sample("S1", Hour.AddMinutes(30), Hour.AddMinutes(40))), null, CancellationToken.None));
+
+        var folder = Path.Combine(_analyzer.Layout.DataRoot, "2026_11", "Main", "Belt_1");
+        Assert.Equal(
+            $"No spectra found for these times in {folder}. Check the times, the data folder and the belt.", e.Message);
+        Assert.Empty(Directory.GetFileSystemEntries(_out.FullName));
+    }
+
+    [Fact]
+    public async Task Cancelled_before_start_throws_and_writes_nothing()
+    {
+        _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(1, Hour.AddMinutes(31)), Hour);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Collector.RunAsync(
+            Request(new Sample("S1", Hour.AddMinutes(30), Hour.AddMinutes(40))), null, cts.Token));
 
         Assert.Empty(Directory.GetFileSystemEntries(_out.FullName));
     }

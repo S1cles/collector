@@ -42,7 +42,9 @@ public static class Collector
         var scan = SpectraSource.Find(request.Layout, request.Samples, progress, ct);
         if (scan.Files.Count == 0)
         {
-            throw new NothingFoundException("No spectra found for these times. Check the times and the LyncisAC data folder.");
+            var firstFolder = request.Layout.BeltDir(request.Samples.Min(s => s.Window.From));
+            throw new NothingFoundException(
+                $"No spectra found for these times in {firstFolder}. Check the times, the data folder and the belt.");
         }
 
         var report = CollectionReport.Build(request.Samples, scan);

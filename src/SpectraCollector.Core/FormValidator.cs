@@ -87,6 +87,12 @@ public static class FormValidator
             return NoSamples;
         }
 
+        if (!Path.IsPathFullyQualified(path))
+        {
+            problems.Add("Use a full path for the CSV file.");
+            return NoSamples;
+        }
+
         if (!File.Exists(path))
         {
             problems.Add("CSV file not found.");
@@ -136,6 +142,11 @@ public static class FormValidator
             return ["The output folder is not a valid path."];
         }
 
+        if (!Path.IsPathFullyQualified(input.OutputDir))
+        {
+            return [@"Use a full folder path for the output, for example D:\Out."];
+        }
+
         var inside = !string.IsNullOrWhiteSpace(input.DataRoot)
             && IsValidPath(input.DataRoot)
             && new DataLayout(input.DataRoot, input.Belt).Contains(input.OutputDir);
@@ -152,6 +163,10 @@ public static class FormValidator
         else if (!IsValidPath(input.DataRoot))
         {
             problems.Add("The LyncisAC data folder is not a valid path.");
+        }
+        else if (!Path.IsPathFullyQualified(input.DataRoot))
+        {
+            problems.Add(@"Use a full folder path for the LyncisAC data, for example D:\LyncisAC_DATA.");
         }
         else if (!Directory.Exists(input.DataRoot))
         {

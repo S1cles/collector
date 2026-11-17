@@ -42,8 +42,8 @@ public static class SampleTable
                 throw Fail(number, "Sample name is empty.");
             }
 
-            var begin = TimeAt(fields, beginColumn, "Begin", number);
-            var end = TimeAt(fields, endColumn, "End", number);
+            var begin = TimeAt(fields, beginColumn, "Begin", "2026-11-06 13:30:00", number);
+            var end = TimeAt(fields, endColumn, "End", "2026-11-06 13:40:00", number);
             if (end < begin)
             {
                 throw Fail(number, "End is earlier than Begin.");
@@ -99,10 +99,10 @@ public static class SampleTable
     private static string FieldAt(List<string> fields, int column) =>
         column < fields.Count ? fields[column] : string.Empty;
 
-    private static DateTime TimeAt(List<string> fields, int column, string label, int number) =>
+    private static DateTime TimeAt(List<string> fields, int column, string label, string example, int number) =>
         SampleTime.TryParse(FieldAt(fields, column), out var value)
             ? value
-            : throw Fail(number, $"{label} is not a valid time.");
+            : throw Fail(number, $"{label} is not a valid time. Use {example}.");
 
     private static List<string> SplitFields(string text, char delimiter, int number)
     {

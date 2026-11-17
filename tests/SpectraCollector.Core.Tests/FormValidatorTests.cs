@@ -202,6 +202,15 @@ public sealed class FormValidatorTests : IDisposable
     }
 
     [Fact]
+    public void Csv_RelativePath_IsProblem()
+    {
+        var check = FormValidator.Check(Csv("times.csv"));
+
+        Assert.Equal(["Use a full path for the CSV file."], check.Problems);
+        Assert.Null(check.Request);
+    }
+
+    [Fact]
     public void Csv_ParseError_ReportsLineMessage()
     {
         var path = WriteCsv("bad.csv", "Sample;Begin;End\nA;2026-11-06 13:20:00;2026-11-06 13:10:00\n");
@@ -255,6 +264,24 @@ public sealed class FormValidatorTests : IDisposable
         var check = FormValidator.Check(Single() with { OutputDir = "out\0dir" });
 
         Assert.Equal(["The output folder is not a valid path."], check.Problems);
+        Assert.Null(check.Request);
+    }
+
+    [Fact]
+    public void Output_RelativePath_IsProblem()
+    {
+        var check = FormValidator.Check(Single() with { OutputDir = "out" });
+
+        Assert.Equal([@"Use a full folder path for the output, for example D:\Out."], check.Problems);
+        Assert.Null(check.Request);
+    }
+
+    [Fact]
+    public void Data_RelativeRoot_IsProblem()
+    {
+        var check = FormValidator.Check(Single() with { DataRoot = "data" });
+
+        Assert.Equal([@"Use a full folder path for the LyncisAC data, for example D:\LyncisAC_DATA."], check.Problems);
         Assert.Null(check.Request);
     }
 
