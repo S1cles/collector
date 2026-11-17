@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SpectraCollector.App/SpectraCollector.App.csproj" />
+    <Project Path="src/SpectraCollector.Core/SpectraCollector.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SpectraCollector.Core.Tests/SpectraCollector.Core.Tests.csproj" />
+  </Folder>
+</Solution>

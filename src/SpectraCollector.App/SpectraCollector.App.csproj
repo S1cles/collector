@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>SpectraCollector</AssemblyName>
+    <RootNamespace>SpectraCollector.App</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>SpectraCollector</Product>
+    <Company>Lyncis</Company>
+    <ApplicationIcon>Assets\SpectraCollector.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\SpectraCollector.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SpectraCollector.Core\SpectraCollector.Core.csproj" />
+  </ItemGroup>
+</Project>
