@@ -47,6 +47,22 @@ public sealed class CollectorTests : IDisposable
         Assert.Empty(Directory.GetFileSystemEntries(_out.FullName));
     }
 
+    [Fact]
+    public async Task Output_inside_the_data_root_is_rejected_before_anything_is_written()
+    {
+        var root = _analyzer.Layout.DataRoot;
+        foreach (var dir in new[] { root, Path.Combine(root, "out") })
+        {
+            var request = Request(new Sample("S1", Hour.AddMinutes(30), Hour.AddMinutes(40))) with { OutputDir = dir };
+
+            var e = await Assert.ThrowsAsync<OutputInsideDataException>(
+                () => Collector.RunAsync(request, null, CancellationToken.None));
+
+            Assert.Equal("Choose an output folder outside the LyncisAC data folder.", e.Message);
+            Assert.Empty(Directory.GetFileSystemEntries(root));
+        }
+    }
+
     private sealed class SyncProgress(Action<CollectProgress> report) : IProgress<CollectProgress>
     {
         public void Report(CollectProgress value) => report(value);

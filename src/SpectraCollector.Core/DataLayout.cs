@@ -14,6 +14,16 @@ public sealed record DataLayout(string DataRoot, string Belt)
         "Packed_Spectra",
         "spect_data_" + hour.ToString("yyyy-MM-dd_HH", CultureInfo.InvariantCulture) + ".zip");
 
+    /// <summary>True when <paramref name="path"/> is the data root or lies under it.</summary>
+    public bool Contains(string path)
+    {
+        var root = WithSeparator(Path.GetFullPath(DataRoot));
+        return WithSeparator(Path.GetFullPath(path)).StartsWith(root, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string WithSeparator(string path) =>
+        Path.EndsInDirectorySeparator(path) ? path : path + Path.DirectorySeparatorChar;
+
     private string BeltDir(DateTime hour) => Path.Combine(
         [DataRoot, hour.ToString("yyyy_MM", CultureInfo.InvariantCulture), .. Belt.Split('\\', '/')]);
 }

@@ -26,4 +26,11 @@ public sealed class ArchiveUnreadableException(string path, Exception inner)
 
 /// <summary>A spectrum could not be read while it was being copied into the output zip.</summary>
 public sealed class SpectrumCopyException(string fileName, string sourcePath, Exception inner)
-    : CollectorException($"Cannot read {fileName} from {sourcePath}: {inner.Message}.", inner);
+    : CollectorException($"Cannot read {fileName} from {sourcePath}: {TrimPeriod(inner.Message)}.", inner)
+{
+    private static string TrimPeriod(string message) => message.EndsWith('.') ? message[..^1] : message;
+}
+
+/// <summary>The chosen output folder is inside the analyzer data folder, which must never be written to.</summary>
+public sealed class OutputInsideDataException()
+    : CollectorException("Choose an output folder outside the LyncisAC data folder.");

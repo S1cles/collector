@@ -65,23 +65,54 @@ public static class OutputArchive
             var entry = zip.CreateEntry(baseName + "/Tech_Spectra/" + file.Name.FileName, CompressionLevel.Optimal);
             entry.LastWriteTime = file.Name.Timestamp;
             using var target = entry.Open();
-            Copy(file, target);
+            Copy(file, target, ct);
             filesWritten?.Report(++written);
         }
     }
 
-    private static void Copy(FoundSpectrum file, Stream target)
+    internal static void Copy(FoundSpectrum file, Stream target, CancellationToken ct)
+    {
+        var buffer = new byte[81920];
+        using var source = OpenSource(file);
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var read = ReadSource(file, source, buffer);
+            if (read == 0)
+            {
+                return;
+            }
+
+            target.Write(buffer, 0, read);
+        }
+    }
+
+    private static Stream OpenSource(FoundSpectrum file)
     {
         try
         {
-            using var source = file.Open();
-            source.CopyTo(target);
+            return file.Open();
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (Exception e) when (IsReadFailure(e))
         {
             throw new SpectrumCopyException(file.Name.FileName, file.SourcePath, e);
         }
     }
+
+    private static int ReadSource(FoundSpectrum file, Stream source, byte[] buffer)
+    {
+        try
+        {
+            return source.Read(buffer, 0, buffer.Length);
+        }
+        catch (Exception e) when (IsReadFailure(e))
+        {
+            throw new SpectrumCopyException(file.Name.FileName, file.SourcePath, e);
+        }
+    }
+
+    private static bool IsReadFailure(Exception e) =>
+        e is IOException or UnauthorizedAccessException or InvalidDataException;
 
     private static void WriteText(ZipArchive zip, string entryName, string text)
     {

@@ -22,6 +22,11 @@ public static class Collector
 
     private static CollectResult Run(CollectRequest request, IProgress<CollectProgress>? progress, CancellationToken ct)
     {
+        if (request.Layout.Contains(request.OutputDir))
+        {
+            throw new OutputInsideDataException();
+        }
+
         var scan = SpectraSource.Find(request.Layout, request.Samples, ct);
         if (scan.Files.Count == 0)
         {

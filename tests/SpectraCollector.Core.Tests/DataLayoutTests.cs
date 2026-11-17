@@ -23,4 +23,13 @@ public class DataLayoutTests
         Assert.Equal(ExpectedArchive, layout.HourArchive(Hour));
         Assert.Equal(ExpectedTech, layout.TechSpectraDir(Hour));
     }
+
+    [Theory]
+    [InlineData("/x/data", true)]
+    [InlineData("/x/data/", true)]
+    [InlineData("/X/DATA/sub/out", true)]
+    [InlineData("/x/data2", false)]
+    [InlineData("/x", false)]
+    public void Contains_matches_the_root_and_its_subfolders_only(string path, bool expected) =>
+        Assert.Equal(expected, new DataLayout("/x/data", "Main/Belt_1").Contains(path));
 }

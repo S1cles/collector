@@ -100,8 +100,26 @@ public sealed class OutputArchiveTests : IDisposable
         var e = Assert.Throws<SpectrumCopyException>(() => Write(_out.FullName, [good, bad]));
 
         Assert.IsType<FileNotFoundException>(e.InnerException, exactMatch: false);
-        Assert.StartsWith("Cannot read " + bad.Name.FileName + " from " + bad.SourcePath + ": ", e.Message);
+        Assert.Equal(
+            $"Cannot read {bad.Name.FileName} from {bad.SourcePath}: {e.InnerException!.Message.TrimEnd('.')}.", e.Message);
+        Assert.DoesNotContain("..", e.Message);
         Assert.Empty(Directory.GetFileSystemEntries(_out.FullName));
+    }
+
+    [Fact]
+    public void Target_write_failure_is_not_a_spectrum_copy_failure()
+    {
+        var file = Loose(1, Hour.AddMinutes(1));
+
+        Assert.Throws<IOException>(() => OutputArchive.Copy(file, new ThrowingWriteStream(), CancellationToken.None));
+    }
+
+    [Fact]
+    public void Source_read_failure_is_a_spectrum_copy_failure()
+    {
+        var bad = Loose(1, Hour.AddMinutes(1)) with { SourcePath = Path.Combine(_out.FullName, "gone.csv") };
+
+        Assert.Throws<SpectrumCopyException>(() => OutputArchive.Copy(bad, new MemoryStream(), CancellationToken.None));
     }
 
     [Fact]
@@ -120,4 +138,9 @@ public sealed class OutputArchiveTests : IDisposable
 internal sealed class ListProgress(Action<int> report) : IProgress<int>
 {
     public void Report(int value) => report(value);
+}
+
+internal sealed class ThrowingWriteStream : MemoryStream
+{
+    public override void Write(byte[] buffer, int offset, int count) => throw new IOException("disk full");
 }
