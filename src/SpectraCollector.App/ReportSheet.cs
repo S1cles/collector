@@ -186,11 +186,15 @@ public sealed class ReportSheet : INotifyPropertyChanged
         Problems = check.Problems;
         ShowTable = check.Request is not null;
         var samples = check.Request?.Samples ?? [];
-        if (_rowSamples is null || !_rowSamples.SequenceEqual(samples))
+        if (!ShowsSamples(samples))
         {
             SetPreRunRows(samples);
         }
     }
+
+    /// <summary>True when the rows are exactly <paramref name="samples"/>, e.g. still the samples of the shown run.</summary>
+    internal bool ShowsSamples(IReadOnlyList<Sample> samples) =>
+        _rowSamples is not null && _rowSamples.SequenceEqual(samples);
 
     /// <summary>Freezes the sheet to <paramref name="samples"/> for a run and clears the last result.</summary>
     internal void BeginRun(string title, string? subtitle, IReadOnlyList<Sample> samples, string runLabel)

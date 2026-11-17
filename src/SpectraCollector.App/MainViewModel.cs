@@ -177,12 +177,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Re-validates the form, e.g. after the CSV file may have been edited outside the window.</summary>
+    /// <summary>
+    /// Re-validates the form, e.g. after the CSV file may have been edited outside the window. A shown run result
+    /// stays only while the form still yields the same samples; otherwise the sheet previews the form again.
+    /// </summary>
     [MemberNotNull(nameof(_check))]
     public void Refresh()
     {
         _check = FormValidator.Check(
             new FormInput(_singleInterval, _csvPath, _beginText, _endText, _outputDir, _dataRoot, _belt));
+        if (!_isRunning && !Sheet.IsDraft && (_check.Request is null || !Sheet.ShowsSamples(_check.Request.Samples)))
+        {
+            Sheet.LeaveRun();
+        }
+
         Sheet.ShowDraft(_singleInterval ? SheetText.SingleIntervalTitle : SheetText.CsvTitle(_csvPath), _check);
         _collect.RaiseCanExecuteChanged();
     }
