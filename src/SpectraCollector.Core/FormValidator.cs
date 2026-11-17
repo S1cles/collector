@@ -123,7 +123,13 @@ public static class FormValidator
             return ["Choose where to save the zip."];
         }
 
+        if (!IsValidPath(input.OutputDir))
+        {
+            return ["The output folder is not a valid path."];
+        }
+
         var inside = !string.IsNullOrWhiteSpace(input.DataRoot)
+            && IsValidPath(input.DataRoot)
             && new DataLayout(input.DataRoot, input.Belt).Contains(input.OutputDir);
         return inside ? ["Choose an output folder outside the LyncisAC data folder."] : [];
     }
@@ -134,6 +140,10 @@ public static class FormValidator
         if (string.IsNullOrWhiteSpace(input.DataRoot))
         {
             problems.Add("Choose the LyncisAC data folder.");
+        }
+        else if (!IsValidPath(input.DataRoot))
+        {
+            problems.Add("The LyncisAC data folder is not a valid path.");
         }
         else if (!Directory.Exists(input.DataRoot))
         {
@@ -146,6 +156,19 @@ public static class FormValidator
         }
 
         return problems;
+    }
+
+    private static bool IsValidPath(string path)
+    {
+        try
+        {
+            Path.GetFullPath(path);
+            return true;
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
     }
 
     private static string Hint(IReadOnlyList<Sample> samples, bool single)

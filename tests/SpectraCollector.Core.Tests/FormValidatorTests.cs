@@ -196,6 +196,24 @@ public sealed class FormValidatorTests : IDisposable
     }
 
     [Fact]
+    public void Output_InvalidPath_IsProblemWithoutThrowing()
+    {
+        var check = FormValidator.Check(Single() with { OutputDir = "out\0dir" });
+
+        Assert.Equal(["The output folder is not a valid path."], check.Problems);
+        Assert.Null(check.Request);
+    }
+
+    [Fact]
+    public void Data_InvalidRoot_IsProblemWithoutThrowing()
+    {
+        var check = FormValidator.Check(Single() with { DataRoot = "data\0root" });
+
+        Assert.Equal(["The LyncisAC data folder is not a valid path."], check.Problems);
+        Assert.Null(check.Request);
+    }
+
+    [Fact]
     public void Output_InsideDataFolder_IsProblem()
     {
         var input = Single();
