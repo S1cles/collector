@@ -9,7 +9,7 @@ public sealed record SourceScan(IReadOnlyList<FoundSpectrum> Files, IReadOnlyLis
 /// <summary>Finds spectrum files in hour archives and in Tech_Spectra.</summary>
 public static class SpectraSource
 {
-    /// <summary>Scans every hour the samples touch; keeps files inside any sample window, once per file name.</summary>
+    /// <summary>Scans every hour the samples touch; keeps files inside any sample window, once per file name; the archive copy wins over a loose one.</summary>
     /// <exception cref="ArchiveUnreadableException">An hour archive exists but cannot be read.</exception>
     public static SourceScan Find(DataLayout layout, IReadOnlyList<Sample> samples, CancellationToken ct)
     {
@@ -21,8 +21,8 @@ public static class SpectraSource
         foreach (var hour in hours)
         {
             ct.ThrowIfCancellationRequested();
-            var hourHasFiles = ScanArchive(layout.HourArchive(hour), windows, found, ct);
-            hourHasFiles |= ScanLoose(layout.TechSpectraDir(hour), hour, windows, found);
+            var hourHasFiles = ScanLoose(layout.TechSpectraDir(hour), hour, windows, found);
+            hourHasFiles |= ScanArchive(layout.HourArchive(hour), windows, found, ct);
             if (!hourHasFiles)
             {
                 emptyHours.Add(hour);
@@ -55,7 +55,7 @@ public static class SpectraSource
                 var fileName = Path.GetFileName(entry.FullName);
                 if (fileName.Length > 0 && SpectrumName.TryParse(fileName, out var name))
                 {
-                    Keep(found, windows, new FoundSpectrum(name, path, entry.FullName));
+                    Keep(found, windows, new FoundSpectrum(name, path, entry.FullName), replace: true);
                 }
             }
         }
@@ -82,16 +82,25 @@ public static class SpectraSource
             if (SpectrumName.TryParse(Path.GetFileName(path), out var name))
             {
                 any = true;
-                Keep(found, windows, new FoundSpectrum(name, path, null));
+                Keep(found, windows, new FoundSpectrum(name, path, null), replace: false);
             }
         }
 
         return any;
     }
 
-    private static void Keep(Dictionary<string, FoundSpectrum> found, List<TimeWindow> windows, FoundSpectrum spectrum)
+    private static void Keep(Dictionary<string, FoundSpectrum> found, List<TimeWindow> windows, FoundSpectrum spectrum, bool replace)
     {
-        if (windows.Any(w => w.Contains(spectrum.Name.Timestamp)))
+        if (!windows.Any(w => w.Contains(spectrum.Name.Timestamp)))
+        {
+            return;
+        }
+
+        if (replace)
+        {
+            found[spectrum.Name.FileName] = spectrum;
+        }
+        else
         {
             found.TryAdd(spectrum.Name.FileName, spectrum);
         }

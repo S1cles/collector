@@ -215,6 +215,43 @@ public class SpectraSourceTests : IDisposable
     }
 
     [Fact]
+    public void Find_MonthFolderMissing_HoursAreEmptyWithoutError()
+    {
+        var a = Name(0, new DateTime(2026, 10, 31, 23, 59, 0));
+        _analyzer.AddLoose(a, new DateTime(2026, 10, 31, 23, 0, 0));
+
+        var scan = Find(Sample(new DateTime(2026, 10, 31, 23, 58, 0), new DateTime(2026, 11, 1, 0, 2, 0)));
+
+        Assert.Equal([a], Names(scan));
+        Assert.Equal([new DateTime(2026, 11, 1, 0, 0, 0)], scan.EmptyHours);
+    }
+
+    [Fact]
+    public void Find_HourWithOnlyUnparseableLooseFiles_IsEmpty()
+    {
+        _analyzer.AddLoose("notes.txt", At(13, 0, 0));
+        _analyzer.AddLoose("Spectra_x_Belt_1_2026.11.06_13.31.00.csv", At(13, 0, 0));
+
+        var scan = Find(Sample(At(13, 30, 0), At(13, 40, 0)));
+
+        Assert.Empty(scan.Files);
+        Assert.Equal([At(13, 0, 0)], scan.EmptyHours);
+    }
+
+    [Fact]
+    public void Find_SameNameLooseAndArchived_PointsAtArchive()
+    {
+        var a = Name(0, At(13, 35, 0));
+        var archive = _analyzer.AddArchive(At(13, 0, 0), [a]);
+        _analyzer.AddLoose(a, At(13, 0, 0));
+
+        var file = Assert.Single(Find(Sample(At(13, 30, 0), At(13, 40, 0))).Files);
+
+        Assert.NotNull(file.EntryName);
+        Assert.Equal(archive, file.SourcePath);
+    }
+
+    [Fact]
     public void Find_CancelledToken_Throws()
     {
         using var cts = new CancellationTokenSource();
