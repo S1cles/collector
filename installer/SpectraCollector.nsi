@@ -19,6 +19,7 @@ Unicode true
 Name "SpectraCollector"
 OutFile "${OUTFILE}"
 InstallDir "$LOCALAPPDATA\Programs\SpectraCollector"
+InstallDirRegKey HKCU "${UNINSTALL_KEY}" "InstallLocation"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 
