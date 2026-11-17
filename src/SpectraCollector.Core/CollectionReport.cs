@@ -35,11 +35,16 @@ public sealed class CollectionReport
     private static readonly TimeSpan MinEdgeAllowance = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan LongestSecondsText = TimeSpan.FromSeconds(120);
 
-    private CollectionReport(IReadOnlyList<SampleSummary> samples, IReadOnlyList<ReportWarning> warnings, int totalFiles)
+    private CollectionReport(
+        IReadOnlyList<SampleSummary> samples,
+        IReadOnlyList<ReportWarning> warnings,
+        int fileCount,
+        IReadOnlyDictionary<int, int> totalBySpectrometer)
     {
         Samples = samples;
         Warnings = warnings;
-        TotalFiles = totalFiles;
+        FileCount = fileCount;
+        TotalBySpectrometer = totalBySpectrometer;
     }
 
     /// <summary>One summary per sample, in input order.</summary>
@@ -52,7 +57,10 @@ public sealed class CollectionReport
     public IReadOnlyList<ReportWarning> Warnings { get; }
 
     /// <summary>The number of unique files in the scan.</summary>
-    public int TotalFiles { get; }
+    public int FileCount { get; }
+
+    /// <summary>Unique files per spectrometer in the scan, keys ascending; a file in two samples counts once.</summary>
+    public IReadOnlyDictionary<int, int> TotalBySpectrometer { get; }
 
     /// <summary>Builds the report of <paramref name="scan"/> against <paramref name="samples"/>.</summary>
     public static CollectionReport Build(IReadOnlyList<Sample> samples, SourceScan scan)
@@ -104,7 +112,8 @@ public sealed class CollectionReport
                 $"No spectra at all for {text} (no hour archive and no files in Tech_Spectra)."));
         }
 
-        return new CollectionReport(summaries, warnings, scan.Files.Count);
+        var totals = spectrometers.ToDictionary(n => n, n => scan.Files.Count(f => f.Name.Spectrometer == n));
+        return new CollectionReport(summaries, warnings, scan.Files.Count, totals);
     }
 
     /// <summary>Renders the report as plain text with CRLF line endings.</summary>
@@ -113,7 +122,7 @@ public sealed class CollectionReport
         var width = Samples.Count == 0 ? 0 : Samples.Max(s => s.Sample.Name.Length);
         var text = new StringBuilder();
         text.Append("SpectraCollector report").Append(Newline);
-        text.Append(CultureInfo.InvariantCulture, $"Samples: {Samples.Count}, files: {TotalFiles}").Append(Newline);
+        text.Append(CultureInfo.InvariantCulture, $"Samples: {Samples.Count}, files: {FileCount}").Append(Newline);
         text.Append(Newline);
         foreach (var summary in Samples)
         {

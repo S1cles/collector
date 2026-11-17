@@ -54,18 +54,87 @@ public sealed class CollectorTests : IDisposable
             CancellationToken.None);
 
         Assert.Equal("spectra_2026-11-17_1330.zip", Path.GetFileName(result.ZipPath));
-        Assert.Equal(2, result.Report.TotalFiles);
+        Assert.Equal(2, result.Report.FileCount);
         Assert.Equal(
             [
-                new CollectProgress(CollectPhase.Searching, 0, 1),
-                new CollectProgress(CollectPhase.Searching, 1, 1),
-                new CollectProgress(CollectPhase.Writing, 0, 2),
-                new CollectProgress(CollectPhase.Writing, 1, 2),
-                new CollectProgress(CollectPhase.Writing, 2, 2),
+                (CollectPhase.Searching, 0, 1),
+                (CollectPhase.Searching, 1, 1),
+                (CollectPhase.Writing, 0, 2),
+                (CollectPhase.Writing, 1, 2),
+                (CollectPhase.Writing, 2, 2),
             ],
-            progress);
+            progress.Select(p => (p.Phase, p.Done, p.Total)));
         using var zip = ZipFile.OpenRead(result.ZipPath);
         Assert.Equal(4, zip.Entries.Count);
+    }
+
+    private async Task<(CollectResult Result, List<CollectProgress> Events)> RunWithProgress(params Sample[] samples)
+    {
+        var events = new List<CollectProgress>();
+        var result = await Collector.RunAsync(Request(samples), new SyncProgress(events.Add), CancellationToken.None);
+        return (result, events);
+    }
+
+    [Fact]
+    public async Task Writing_progress_starts_with_the_report_and_zero_counts()
+    {
+        _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(1, Hour.AddMinutes(31)), Hour);
+        _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(1, Hour.AddMinutes(51)), Hour);
+
+        var (result, events) = await RunWithProgress(
+            new Sample("S1", Hour.AddMinutes(30), Hour.AddMinutes(40)),
+            new Sample("S2", Hour.AddMinutes(50), Hour.AddMinutes(55)));
+
+        var writing = events.Where(e => e.Phase == CollectPhase.Writing).ToList();
+        Assert.Same(result.Report, writing[0].Report);
+        Assert.Equal([0, 0], writing[0].WrittenPerSample);
+        Assert.All(writing.Skip(1), e => Assert.Null(e.Report));
+        Assert.All(events.Where(e => e.Phase == CollectPhase.Searching), e =>
+        {
+            Assert.Null(e.Report);
+            Assert.Null(e.WrittenPerSample);
+        });
+    }
+
+    [Fact]
+    public async Task Writing_progress_counts_written_files_per_sample()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(0, Hour.AddMinutes(31).AddSeconds(i * 10)), Hour);
+            _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(1, Hour.AddMinutes(31).AddSeconds(i * 10)), Hour);
+        }
+
+        _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(0, Hour.AddMinutes(51)), Hour);
+
+        var (result, events) = await RunWithProgress(
+            new Sample("S1", Hour.AddMinutes(30), Hour.AddMinutes(40)),
+            new Sample("S2", Hour.AddMinutes(50), Hour.AddMinutes(55)));
+
+        var counts = events.Where(e => e.Phase == CollectPhase.Writing).Select(e => e.WrittenPerSample!).ToList();
+        Assert.Equal(
+            result.Report.Samples.Select(s => s.CountBySpectrometer.Values.Sum()), counts[^1]);
+        for (var i = 1; i < counts.Count; i++)
+        {
+            Assert.All(Enumerable.Range(0, 2), k => Assert.True(counts[i][k] >= counts[i - 1][k]));
+        }
+    }
+
+    [Fact]
+    public async Task Overlapping_samples_count_a_shared_file_for_both()
+    {
+        _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(0, Hour.AddMinutes(31)), Hour);
+        _analyzer.AddLoose(FakeAnalyzer.SpectrumFileName(0, Hour.AddMinutes(32)), Hour);
+
+        var (result, events) = await RunWithProgress(
+            new Sample("S1", Hour.AddMinutes(30), Hour.AddMinutes(32)),
+            new Sample("S2", Hour.AddMinutes(31), Hour.AddMinutes(33)));
+
+        var last = events.Last(e => e.Phase == CollectPhase.Writing);
+        Assert.Equal(2, last.Total);
+        Assert.Equal([2, 2], last.WrittenPerSample);
+        using var zip = ZipFile.OpenRead(result.ZipPath);
+        Assert.Equal(2, zip.Entries.Count(e => e.FullName.Contains("/Tech_Spectra/")));
     }
 
     [Fact]

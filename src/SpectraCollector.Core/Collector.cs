@@ -19,7 +19,17 @@ public enum CollectPhase
 }
 
 /// <summary>How far a <paramref name="Phase"/> has come; a Total of 0 means the extent is not known.</summary>
-public sealed record CollectProgress(CollectPhase Phase, int Done, int Total);
+/// <param name="Report">Set only on the first Writing event, so the window can fill in the sheet before the zip is done.</param>
+/// <param name="WrittenPerSample">
+/// Set on Writing events: a fresh snapshot of spectra written so far per sample, index-aligned with
+/// <see cref="CollectRequest.Samples"/>. A spectrum inside two sample windows counts for both.
+/// </param>
+public sealed record CollectProgress(
+    CollectPhase Phase,
+    int Done,
+    int Total,
+    CollectionReport? Report = null,
+    IReadOnlyList<int>? WrittenPerSample = null);
 
 /// <summary>The finished zip and the report that went into it.</summary>
 public sealed record CollectResult(string ZipPath, CollectionReport Report);
@@ -51,7 +61,9 @@ public static class Collector
         var earliest = request.Samples.Min(s => s.Begin);
         var baseName = "spectra_" + earliest.ToString("yyyy-MM-dd_HHmm", CultureInfo.InvariantCulture);
         var total = scan.Files.Count;
-        progress?.Report(new CollectProgress(CollectPhase.Writing, 0, total));
+        var samplesOfFile = SamplesOfEachFile(request.Samples, scan.Files);
+        var written = new int[request.Samples.Count];
+        progress?.Report(new CollectProgress(CollectPhase.Writing, 0, total, report, [.. written]));
         var zipPath = OutputArchive.Write(
             request.OutputDir,
             baseName,
@@ -59,9 +71,25 @@ public static class Collector
             request.CsvName,
             request.CsvBytes,
             report.ToText(),
-            new DelegateProgress(done => progress?.Report(new CollectProgress(CollectPhase.Writing, done, total))),
+            new DelegateProgress(done =>
+            {
+                foreach (var sample in samplesOfFile[done - 1])
+                {
+                    written[sample]++;
+                }
+
+                progress?.Report(new CollectProgress(CollectPhase.Writing, done, total, null, [.. written]));
+            }),
             ct);
         return new CollectResult(zipPath, report);
+    }
+
+    private static int[][] SamplesOfEachFile(IReadOnlyList<Sample> samples, IReadOnlyList<FoundSpectrum> files)
+    {
+        var windows = samples.Select(s => s.Window).ToList();
+        return files
+            .Select(f => Enumerable.Range(0, windows.Count).Where(i => windows[i].Contains(f.Name.Timestamp)).ToArray())
+            .ToArray();
     }
 
     private sealed class DelegateProgress(Action<int> report) : IProgress<int>

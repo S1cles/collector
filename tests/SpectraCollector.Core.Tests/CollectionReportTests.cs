@@ -26,9 +26,21 @@ public sealed class CollectionReportTests
         var report = CollectionReport.Build(
             [S("S01", At(13, 5), At(13, 6)), S("S02", At(13, 20), At(13, 21))], Scan(files));
 
-        Assert.Equal(8, report.TotalFiles);
+        Assert.Equal(8, report.FileCount);
         Assert.Equal(new Dictionary<int, int> { [0] = 3, [1] = 3 }, report.Samples[0].CountBySpectrometer);
         Assert.Equal(new Dictionary<int, int> { [0] = 2, [1] = 0 }, report.Samples[1].CountBySpectrometer);
+    }
+
+    [Fact]
+    public void Report_totals_count_each_spectrum_once()
+    {
+        var files = Series(0, At(13, 5), 3, 10).Concat(Series(1, At(13, 5), 2, 10));
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 5), At(13, 7)), S("S02", At(13, 6), At(13, 8))], Scan(files));
+
+        Assert.Equal(5, report.FileCount);
+        Assert.Equal(new Dictionary<int, int> { [0] = 3, [1] = 2 }, report.TotalBySpectrometer);
+        Assert.Equal([0, 1], report.TotalBySpectrometer.Keys);
     }
 
     [Fact]
