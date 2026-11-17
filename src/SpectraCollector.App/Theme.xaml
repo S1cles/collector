@@ -4,18 +4,26 @@
 
     <SolidColorBrush x:Key="InkBrush" Color="#1C2630" />
     <SolidColorBrush x:Key="GraphiteBrush" Color="#556270" />
-    <SolidColorBrush x:Key="MistBrush" Color="#EEF1F4" />
+    <SolidColorBrush x:Key="WindowBrush" Color="#E9EDF1" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="RuleBrush" Color="#D3DAE0" />
+    <SolidColorBrush x:Key="CellLineBrush" Color="#B8C2CC" />
+    <SolidColorBrush x:Key="SheetBorderBrush" Color="#C3CBD3" />
+    <SolidColorBrush x:Key="RowRuleBrush" Color="#E1E6EA" />
+    <SolidColorBrush x:Key="FooterBrush" Color="#F7F9FA" />
+    <SolidColorBrush x:Key="ZipBlockBrush" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="ZipTextBrush" Color="#3B4754" />
+    <SolidColorBrush x:Key="BarTrackBrush" Color="#DDE3E8" />
+    <SolidColorBrush x:Key="BlankRuleBrush" Color="#8592A0" />
     <SolidColorBrush x:Key="LyncisRedBrush" Color="#DA291C" />
-    <SolidColorBrush x:Key="WarningBrush" Color="#B26A00" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#9A5B00" />
     <SolidColorBrush x:Key="ErrorBrush" Color="#B42318" />
     <SolidColorBrush x:Key="SuccessBrush" Color="#1F7A4D" />
 
     <SolidColorBrush x:Key="InkHoverBrush" Color="#2E3741" />
     <SolidColorBrush x:Key="InkPressedBrush" Color="#151C24" />
+    <SolidColorBrush x:Key="ButtonHoverBrush" Color="#EEF1F4" />
+    <SolidColorBrush x:Key="ButtonPressedBrush" Color="#E1E6EA" />
     <SolidColorBrush x:Key="HoverTintBrush" Color="#0F1C2630" />
-    <SolidColorBrush x:Key="PressedTintBrush" Color="#1F1C2630" />
 
     <LinearGradientBrush x:Key="BandBrush" StartPoint="0,0.5" EndPoint="1,0.5">
         <GradientStop Offset="0.0" Color="#6A3FB5" />
@@ -28,11 +36,49 @@
 
     <FontFamily x:Key="DisplayFont">Bahnschrift, Segoe UI</FontFamily>
     <FontFamily x:Key="TextFont">Segoe UI</FontFamily>
-    <sys:Double x:Key="TitleSize">22</sys:Double>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas</FontFamily>
+    <sys:Double x:Key="AppTitleSize">16</sys:Double>
+    <sys:Double x:Key="SheetTitleSize">19</sys:Double>
     <sys:Double x:Key="BodySize">13</sys:Double>
+    <sys:Double x:Key="ButtonSize">12.5</sys:Double>
     <sys:Double x:Key="SmallSize">12</sys:Double>
+    <sys:Double x:Key="LabelSize">11.5</sys:Double>
 
     <BooleanToVisibilityConverter x:Key="VisibleWhenTrue" />
+
+    <!-- Icons keep the 16 and 12 px boxes of the mockup through a transparent frame. -->
+    <DrawingImage x:Key="WarningIcon">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M0,0 H16 V16 H0 Z" />
+                <GeometryDrawing Brush="{StaticResource WarningBrush}" Geometry="M8,1.6 L15,14 L1,14 Z" />
+                <GeometryDrawing Geometry="M8,6 L8,10.2">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{StaticResource SurfaceBrush}" Thickness="1.6" StartLineCap="Round" EndLineCap="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="{StaticResource SurfaceBrush}">
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry Center="8,12" RadiusX="0.95" RadiusY="0.95" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <DrawingImage x:Key="CheckIcon">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M0,0 H12 V12 H0 Z" />
+                <GeometryDrawing Geometry="M2.4,6.3 L4.8,8.7 L9.6,3.5">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="{StaticResource SuccessBrush}" Thickness="1.8" StartLineCap="Round" EndLineCap="Round"
+                             LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
 
     <Style x:Key="FocusVisual">
         <Setter Property="Control.Template">
@@ -45,81 +91,53 @@
         </Setter>
     </Style>
 
-    <Style x:Key="TitleText" TargetType="TextBlock">
+    <Style x:Key="AppTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
-        <Setter Property="FontSize" Value="{StaticResource TitleSize}" />
-        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource AppTitleSize}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <Style x:Key="FieldLabel" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
-        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
-        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-
-    <Style x:Key="SubLabel" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
-        <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
-    </Style>
-
-    <Style x:Key="DisplayText" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
-        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
-    </Style>
-
-    <Style x:Key="HintText" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
-        <Setter Property="FontSize" Value="{StaticResource SmallSize}" />
-        <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
-        <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
-
-    <Style x:Key="InputBox" TargetType="TextBox">
-        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
+    <!-- The form frame: rounded outline; the cells inside draw the 1 px lines between them. -->
+    <Style x:Key="FormFrame" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource RuleBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CellLineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
-        <Setter Property="CaretBrush" Value="{StaticResource InkBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
-        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="Padding" Value="8,0" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CornerRadius" Value="4" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <!-- A form cell draws its left and top line; the form grid sits at -1,-1 inside a clipping border, so only the
+         lines between cells remain. The focus frame is rounded so it never pokes out at the form's outer corners. -->
+    <Style x:Key="FormCell" TargetType="HeaderedContentControl">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
         <Setter Property="Template">
             <Setter.Value>
-                <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="Frame" CornerRadius="4"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}">
+                <ControlTemplate TargetType="HeaderedContentControl">
+                    <Border BorderBrush="{StaticResource CellLineBrush}" BorderThickness="1,1,0,0"
+                            SnapsToDevicePixels="True">
                         <Grid>
-                            <!-- TextBoxView insets text by 2 px; the placeholder matches it. -->
-                            <TextBlock x:Name="Placeholder" Margin="10,0" VerticalAlignment="Center"
-                                       IsHitTestVisible="False" Visibility="Collapsed"
-                                       Foreground="{StaticResource GraphiteBrush}"
-                                       Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
-                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
-                                          Margin="{TemplateBinding Padding}"
-                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                          HorizontalScrollBarVisibility="Hidden"
-                                          VerticalScrollBarVisibility="Hidden" />
+                            <StackPanel Margin="10,6,10,7">
+                                <ContentPresenter ContentSource="Header" MinHeight="16"
+                                                  TextElement.FontSize="{StaticResource LabelSize}"
+                                                  TextElement.Foreground="{StaticResource GraphiteBrush}" />
+                                <ContentPresenter MinHeight="26" />
+                            </StackPanel>
+                            <Border x:Name="FocusFrame" BorderBrush="{StaticResource InkBrush}" BorderThickness="2"
+                                    CornerRadius="3" IsHitTestVisible="False" Visibility="Collapsed" />
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="Text" Value="">
-                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
-                        </Trigger>
-                        <Trigger Property="Text" Value="{x:Null}">
-                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource InkBrush}" />
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocusWithin" Value="True" />
+                                <Condition Property="IsEnabled" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="FocusFrame" Property="Visibility" Value="Visible" />
+                        </MultiTrigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.6" />
+                            <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -127,21 +145,67 @@
         </Setter>
     </Style>
 
-    <Style x:Key="TimeBox" TargetType="TextBox" BasedOn="{StaticResource InputBox}">
+    <Style x:Key="CellInput" TargetType="TextBox">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource InkBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Grid Background="{TemplateBinding Background}">
+                        <!-- TextBoxView insets text by 2 px; the -2 px host margin puts it under the cell label. -->
+                        <TextBlock x:Name="Placeholder" VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Visibility="Collapsed" Foreground="{StaticResource GraphiteBrush}"
+                                   Text="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0" Focusable="False"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="Text" Value="{x:Null}">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="CellTimeInput" TargetType="TextBox" BasedOn="{StaticResource CellInput}">
         <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
-        <Setter Property="Width" Value="192" />
-        <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="Tag" Value="2026-11-06 13:30:00" />
+    </Style>
+
+    <Style x:Key="CellValue" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
     <Style x:Key="ButtonBase" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
-        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="MinWidth" Value="88" />
-        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="FontSize" Value="{StaticResource ButtonSize}" />
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CellLineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -155,16 +219,36 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4" />
+                            <Setter Property="Opacity" Value="0.55" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource ButtonHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{StaticResource ButtonPressedBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="CellButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}" />
+
+    <Style x:Key="FooterButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Padding" Value="14,0" />
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-        <Setter Property="MinWidth" Value="136" />
+        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="MinWidth" Value="156" />
+        <Setter Property="Padding" Value="16,0" />
         <Setter Property="Background" Value="{StaticResource InkBrush}" />
         <Setter Property="BorderBrush" Value="{StaticResource InkBrush}" />
         <Setter Property="Foreground" Value="{StaticResource SurfaceBrush}" />
@@ -177,33 +261,23 @@
                 <Setter Property="Background" Value="{StaticResource InkPressedBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource InkPressedBrush}" />
             </Trigger>
-        </Style.Triggers>
-    </Style>
-
-    <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{StaticResource RuleBrush}" />
-        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{StaticResource HoverTintBrush}" />
-            </Trigger>
-            <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{StaticResource PressedTintBrush}" />
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45" />
             </Trigger>
         </Style.Triggers>
     </Style>
 
     <Style x:Key="SegmentTrack" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource RuleBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CellLineBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="4" />
         <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Style.Triggers>
             <Trigger Property="IsEnabled" Value="False">
-                <Setter Property="Opacity" Value="0.6" />
+                <Setter Property="Opacity" Value="0.55" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -212,11 +286,11 @@
     <Style x:Key="Segment" TargetType="RadioButton">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
-        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
+        <Setter Property="FontSize" Value="{StaticResource ButtonSize}" />
         <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Height" Value="30" />
-        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Padding" Value="10,0" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -276,5 +350,116 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="RowBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="1" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid>
+                        <Border x:Name="PART_Track" CornerRadius="2" Background="{StaticResource BarTrackBrush}" />
+                        <Border x:Name="PART_Indicator" CornerRadius="2" HorizontalAlignment="Left"
+                                Background="{StaticResource InkBrush}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The vertical scroll bar floats over the sheet's 20 px right margin, so rows keep the width of the fixed table header. -->
+    <Style x:Key="SheetScroll" TargetType="ScrollViewer">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid Background="{TemplateBinding Background}">
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                CanContentScroll="{TemplateBinding CanContentScroll}" />
+                        <ScrollBar x:Name="PART_VerticalScrollBar" HorizontalAlignment="Right"
+                                   Maximum="{TemplateBinding ScrollableHeight}"
+                                   ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{TemplateBinding VerticalOffset}"
+                                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SheetTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="FontSize" Value="{StaticResource SheetTitleSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style x:Key="DisplayText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="FontSize" Value="{StaticResource BodySize}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <Style x:Key="SheetSubtitle" TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
+        <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style x:Key="MonoText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="{StaticResource SmallSize}" />
+    </Style>
+
+    <Style x:Key="ZipLine" TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+        <Setter Property="Foreground" Value="{StaticResource ZipTextBrush}" />
+        <Setter Property="LineHeight" Value="18.6" />
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+    </Style>
+
+    <Style x:Key="ColumnHeader" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SmallSize}" />
+        <Setter Property="Foreground" Value="{StaticResource GraphiteBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="SampleName" TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <Style x:Key="CountText" TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+
+    <Style x:Key="TotalCountText" TargetType="TextBlock" BasedOn="{StaticResource CountText}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="NoteText" TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
+        <Setter Property="FontSize" Value="{StaticResource SmallSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+    </Style>
+
+    <!-- The colour of a stamp follows its text; the frame borrows it, like "currentColor". -->
+    <Style x:Key="StampBase" TargetType="Border">
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="10,2" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource InkBrush}" />
+        <Setter Property="TextElement.FontFamily" Value="{StaticResource DisplayFont}" />
+        <Setter Property="TextElement.FontSize" Value="{StaticResource BodySize}" />
+        <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+        <Setter Property="BorderBrush"
+                Value="{Binding Path=(TextElement.Foreground), RelativeSource={RelativeSource Self}}" />
     </Style>
 </ResourceDictionary>

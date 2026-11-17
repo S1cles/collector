@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Win32;
 
 namespace SpectraCollector.App;
@@ -50,6 +51,13 @@ public partial class MainWindow : Window
         {
             _viewModel.DataRoot = folder;
         }
+    }
+
+    /// <summary>"Change" hides itself, so keyboard focus moves on to the data folder cell it reveals.</summary>
+    private void OnChangeData(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.OpenDataEditor();
+        Dispatcher.InvokeAsync(() => DataRootBox.Focus(), DispatcherPriority.Input);
     }
 
     private string? PickFolder(string title, string current)
