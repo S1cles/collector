@@ -23,3 +23,7 @@ public sealed class ArchiveUnreadableException(string path, Exception inner)
     : CollectorException(
         $"Cannot read archive {path}: {inner.Message} If the spectra archiver is packing this hour right now, try again in a few minutes.",
         inner);
+
+/// <summary>A spectrum could not be read while it was being copied into the output zip.</summary>
+public sealed class SpectrumCopyException(string fileName, string sourcePath, Exception inner)
+    : CollectorException($"Cannot read {fileName} from {sourcePath}: {inner.Message}.", inner);
