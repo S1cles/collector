@@ -32,8 +32,15 @@ public sealed class CollectorTests : IDisposable
 
         Assert.Equal("spectra_2026-11-17_1330.zip", Path.GetFileName(result.ZipPath));
         Assert.Equal(2, result.Report.TotalFiles);
-        Assert.Equal(new CollectProgress(0, 2), progress[0]);
-        Assert.Equal(new CollectProgress(2, 2), progress[^1]);
+        Assert.Equal(
+            [
+                new CollectProgress(CollectPhase.Searching, 0, 1),
+                new CollectProgress(CollectPhase.Searching, 1, 1),
+                new CollectProgress(CollectPhase.Writing, 0, 2),
+                new CollectProgress(CollectPhase.Writing, 1, 2),
+                new CollectProgress(CollectPhase.Writing, 2, 2),
+            ],
+            progress);
         using var zip = ZipFile.OpenRead(result.ZipPath);
         Assert.Equal(4, zip.Entries.Count);
     }
@@ -62,9 +69,9 @@ public sealed class CollectorTests : IDisposable
             Assert.Empty(Directory.GetFileSystemEntries(root));
         }
     }
+}
 
-    private sealed class SyncProgress(Action<CollectProgress> report) : IProgress<CollectProgress>
-    {
-        public void Report(CollectProgress value) => report(value);
-    }
+internal sealed class SyncProgress(Action<CollectProgress> report) : IProgress<CollectProgress>
+{
+    public void Report(CollectProgress value) => report(value);
 }

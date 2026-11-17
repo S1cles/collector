@@ -252,6 +252,113 @@ public class SpectraSourceTests : IDisposable
     }
 
     [Fact]
+    public void Find_WindowEndingOnTheHour_DoesNotReportThatHourAsEmpty()
+    {
+        _analyzer.AddLoose(Name(0, At(13, 55, 0)), At(13, 0, 0));
+
+        var scan = Find(Sample(At(13, 50, 0), At(14, 0, 0)));
+
+        Assert.Single(scan.Files);
+        Assert.Empty(scan.EmptyHours);
+    }
+
+    [Fact]
+    public void Find_WindowEndingOnTheHour_StillCollectsAFileAtThatInstant()
+    {
+        var onTheHour = Name(0, At(14, 0, 0));
+        _analyzer.AddLoose(Name(0, At(13, 55, 0)), At(13, 0, 0));
+        _analyzer.AddLoose(onTheHour, At(14, 0, 0));
+        _analyzer.AddLoose(Name(0, At(14, 0, 10)), At(14, 0, 0));
+
+        var scan = Find(Sample(At(13, 50, 0), At(14, 0, 0)));
+
+        Assert.Equal(onTheHour, scan.Files[^1].Name.FileName);
+        Assert.Equal(2, scan.Files.Count);
+    }
+
+    [Fact]
+    public void Find_SingleInstantWindowOnTheHour_IsNotAnEmptyHour()
+    {
+        var scan = Find(Sample(At(14, 0, 0), At(14, 0, 0)));
+
+        Assert.Empty(scan.Files);
+        Assert.Empty(scan.EmptyHours);
+    }
+
+    [Fact]
+    public void Find_ThreeHoursOfOneMonth_ListTechSpectraOnce()
+    {
+        var files = new[] { Name(0, At(13, 10, 0)), Name(0, At(14, 10, 0)), Name(0, At(15, 10, 0)) };
+        foreach (var (file, hour) in files.Zip([At(13, 0, 0), At(14, 0, 0), At(15, 0, 0)]))
+        {
+            _analyzer.AddLoose(file, hour);
+        }
+
+        var listed = new List<string>();
+        var scan = SpectraSource.Find(
+            _analyzer.Layout,
+            [Sample(At(13, 5, 0), At(15, 20, 0))],
+            null,
+            dir =>
+            {
+                listed.Add(dir);
+                return Directory.EnumerateFiles(dir);
+            },
+            CancellationToken.None);
+
+        Assert.Equal(files, Names(scan));
+        Assert.Equal([_analyzer.Layout.TechSpectraDir(At(13, 0, 0))], listed);
+    }
+
+    [Fact]
+    public void Find_CancelDuringLooseListing_StopsTheListing()
+    {
+        const int fileCount = 10;
+        for (var i = 0; i < fileCount; i++)
+        {
+            _analyzer.AddLoose(Name(0, At(13, 31, i)), At(13, 0, 0));
+        }
+
+        using var cts = new CancellationTokenSource();
+        var yielded = 0;
+        IEnumerable<string> ListAndCancelAtThird(string dir)
+        {
+            foreach (var path in Directory.EnumerateFiles(dir))
+            {
+                if (++yielded == 3)
+                {
+                    cts.Cancel();
+                }
+
+                yield return path;
+            }
+        }
+
+        Assert.ThrowsAny<OperationCanceledException>(() => SpectraSource.Find(
+            _analyzer.Layout, [Sample(At(13, 30, 0), At(13, 40, 0))], null, ListAndCancelAtThird, cts.Token));
+        Assert.InRange(yielded, 3, fileCount - 1);
+    }
+
+    [Fact]
+    public void Find_ReportsSearchProgressPerHour()
+    {
+        _analyzer.AddLoose(Name(0, At(13, 10, 0)), At(13, 0, 0));
+        var reported = new List<CollectProgress>();
+
+        SpectraSource.Find(
+            _analyzer.Layout, [Sample(At(13, 5, 0), At(15, 20, 0))], new SyncProgress(reported.Add), CancellationToken.None);
+
+        Assert.Equal(
+            [
+                new CollectProgress(CollectPhase.Searching, 0, 3),
+                new CollectProgress(CollectPhase.Searching, 1, 3),
+                new CollectProgress(CollectPhase.Searching, 2, 3),
+                new CollectProgress(CollectPhase.Searching, 3, 3),
+            ],
+            reported);
+    }
+
+    [Fact]
     public void Find_CancelledToken_Throws()
     {
         using var cts = new CancellationTokenSource();

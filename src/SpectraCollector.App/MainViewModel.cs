@@ -30,6 +30,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _belt;
     private bool _isDataEditorOpen;
     private bool _isRunning;
+    private bool _isCancelling;
+    private CollectPhase _phase;
     private double _bandFill;
     private RunView _result = RunView.Empty;
     private FormCheck _check;
@@ -156,9 +158,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public bool IsIdle => !_isRunning;
 
-    public string CollectLabel => _isRunning ? "Collecting…" : "Collect spectra";
+    /// <summary>The Collect button text: what the running collection is doing, or the plain verb when idle.</summary>
+    public string CollectLabel =>
+        !_isRunning ? "Collect spectra"
+        : _isCancelling ? "Cancelling…"
+        : _phase == CollectPhase.Searching ? "Searching…"
+        : "Collecting…";
 
-    /// <summary>The filled share of the spectrum band, 0 to 1: Done/Total while running, 1 after a success.</summary>
+    /// <summary>The filled share of the spectrum band, 0 to 1: Done/Total of the current phase while running, 1 after a success.</summary>
     public double BandFill
     {
         get => _bandFill;
@@ -241,6 +248,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Notes.Clear();
         Result = RunView.Empty;
         BandFill = 0;
+        _phase = CollectPhase.Searching;
+        _isCancelling = false;
         SetRunning(true);
         try
         {
@@ -249,6 +258,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         finally
         {
             _cancellation = null;
+            _isCancelling = false;
             BandFill = Result.HasZip ? 1 : 0;
             SetRunning(false);
         }
@@ -261,7 +271,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private async Task<RunView> CollectAsync(CollectRequest request, CancellationToken ct)
     {
-        var progress = new Progress<CollectProgress>(p => BandFill = p.Total == 0 ? 0 : (double)p.Done / p.Total);
+        var progress = new Progress<CollectProgress>(ShowProgress);
         try
         {
             return RunView.Succeeded(await Collector.RunAsync(request, progress, ct));
@@ -284,7 +294,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private void Cancel() => _cancellation?.Cancel();
+    private void ShowProgress(CollectProgress progress)
+    {
+        if (_phase != progress.Phase)
+        {
+            _phase = progress.Phase;
+            Raise(nameof(CollectLabel));
+        }
+
+        BandFill = progress.Total == 0 ? 0 : (double)progress.Done / progress.Total;
+    }
+
+    private void Cancel()
+    {
+        if (_cancellation is null)
+        {
+            return;
+        }
+
+        _cancellation.Cancel();
+        _isCancelling = true;
+        Raise(nameof(CollectLabel));
+    }
 
     private void SaveSettings()
     {
