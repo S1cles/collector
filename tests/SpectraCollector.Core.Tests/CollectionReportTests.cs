@@ -8,8 +8,8 @@ public sealed class CollectionReportTests
 
     private static DateTime At(int h, int m, int s = 0) => Day.AddHours(h).AddMinutes(m).AddSeconds(s);
 
-    private static FoundSpectrum Spectrum(int spectrometer, DateTime t) =>
-        new(new SpectrumName($"Spectra_{spectrometer}_x_{t:yyyy.MM.dd_HH.mm.ss}.txt", spectrometer, t), "src", null);
+    private static FoundSpectrum Spectrum(int spectrometer, DateTime t, string tag = "x") =>
+        new(new SpectrumName($"Spectra_{spectrometer}_{tag}_{t:yyyy.MM.dd_HH.mm.ss}.txt", spectrometer, t), "src", null);
 
     private static List<FoundSpectrum> Series(int spectrometer, DateTime start, int count, int stepSeconds) =>
         Enumerable.Range(0, count).Select(i => Spectrum(spectrometer, start.AddSeconds(i * stepSeconds))).ToList();
@@ -48,7 +48,7 @@ public sealed class CollectionReportTests
     public void Warns_when_spectrometers_have_different_counts()
     {
         var files = Series(0, At(13, 20), 43, 10).Concat(Series(1, At(13, 20), 41, 10));
-        var report = CollectionReport.Build([S("S02", At(13, 20), At(13, 28))], Scan(files));
+        var report = CollectionReport.Build([S("S02", At(13, 20), At(13, 27))], Scan(files));
 
         var warning = Assert.Single(report.Warnings);
         Assert.Equal(WarningKind.UnevenSpectrometers, warning.Kind);
@@ -59,7 +59,7 @@ public sealed class CollectionReportTests
     public void Warns_about_a_gap_longer_than_three_times_the_median_interval()
     {
         var files = Series(0, At(13, 22), 2, 10).Concat(Series(0, At(13, 22, 50), 3, 10));
-        var report = CollectionReport.Build([S("S02", At(13, 20), At(13, 28))], Scan(files));
+        var report = CollectionReport.Build([S("S02", At(13, 22), At(13, 23, 10))], Scan(files));
 
         var warning = Assert.Single(report.Warnings);
         Assert.Equal(WarningKind.Gap, warning.Kind);
@@ -70,9 +70,113 @@ public sealed class CollectionReportTests
     public void Does_not_warn_about_a_twenty_second_hole_in_ten_second_cadence()
     {
         var files = Series(0, At(13, 22), 2, 10).Concat(Series(0, At(13, 22, 30), 3, 10));
-        var report = CollectionReport.Build([S("S02", At(13, 20), At(13, 28))], Scan(files));
+        var report = CollectionReport.Build([S("S02", At(13, 22), At(13, 22, 50))], Scan(files));
 
         Assert.Empty(report.Warnings);
+    }
+
+    [Fact]
+    public void Warns_when_a_spectrometer_starts_late()
+    {
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 5), At(13, 12))], Scan(Series(0, At(13, 6, 10), 36, 10)));
+
+        var warning = Assert.Single(report.Warnings);
+        Assert.Equal(WarningKind.LateStart, warning.Kind);
+        Assert.Equal("S01", warning.Sample);
+        Assert.Equal("S01: Spectra_0 starts at 13:06:10, 70 s after Begin.", warning.Message);
+    }
+
+    [Fact]
+    public void Warns_when_a_spectrometer_ends_early()
+    {
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 5), At(13, 12))], Scan(Series(0, At(13, 5), 19, 10)));
+
+        var warning = Assert.Single(report.Warnings);
+        Assert.Equal(WarningKind.EarlyEnd, warning.Kind);
+        Assert.Equal("S01: Spectra_0 ends at 13:08:00, 4 min before End.", warning.Message);
+    }
+
+    [Fact]
+    public void Allows_a_minute_at_either_end_even_with_a_fast_cadence()
+    {
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 5), At(13, 12))], Scan(Series(0, At(13, 6), 31, 10)));
+
+        Assert.Empty(report.Warnings);
+    }
+
+    [Fact]
+    public void Allows_three_intervals_at_either_end_with_a_slow_cadence()
+    {
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 0), At(13, 20))], Scan(Series(0, At(13, 1, 30), 35, 30)));
+
+        Assert.Empty(report.Warnings);
+    }
+
+    [Fact]
+    public void Measures_late_start_and_early_end_from_the_unrounded_times()
+    {
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 5, 50), At(13, 12, 10))], Scan(Series(0, At(13, 6, 30), 31, 10)));
+
+        Assert.Empty(report.Warnings);
+    }
+
+    [Fact]
+    public void Uses_the_scan_wide_interval_when_a_sample_has_too_few_files()
+    {
+        var files = Series(0, At(13, 0), 31, 10).Concat(Series(0, At(13, 21, 10), 2, 10));
+        var report = CollectionReport.Build(
+            [S("S01", At(13, 0), At(13, 5)), S("S02", At(13, 20), At(13, 21, 20))], Scan(files));
+
+        var warning = Assert.Single(report.Warnings);
+        Assert.Equal("S02: Spectra_0 starts at 13:21:10, 70 s after Begin.", warning.Message);
+    }
+
+    [Fact]
+    public void Uses_a_sixty_second_interval_when_none_is_known()
+    {
+        var files = Series(0, At(13, 2, 50), 2, 20).Concat(Series(1, At(13, 3, 11), 2, 9));
+        var report = CollectionReport.Build([S("S01", At(13, 0), At(13, 3, 10))], Scan(files));
+
+        var warning = Assert.Single(report.Warnings);
+        Assert.Equal("S01: Spectra_1 starts at 13:03:11, 3 min after Begin.", warning.Message);
+    }
+
+    [Fact]
+    public void A_zero_median_interval_does_not_make_every_interval_a_gap()
+    {
+        var files = new[]
+        {
+            Spectrum(0, At(13, 5), "a"), Spectrum(0, At(13, 5), "b"), Spectrum(0, At(13, 5), "c"), Spectrum(0, At(13, 5, 10)),
+        };
+        var report = CollectionReport.Build([S("S01", At(13, 5), At(13, 5, 10))], Scan(files));
+
+        Assert.Empty(report.Warnings);
+    }
+
+    [Fact]
+    public void Orders_warnings_inside_a_sample_by_kind()
+    {
+        var files = Series(0, At(13, 0), 13, 10)
+            .Concat(Series(0, At(13, 3), 31, 10))
+            .Concat(Series(1, At(13, 1, 10), 54, 10));
+        var report = CollectionReport.Build([S("S01", At(13, 0), At(13, 10))], Scan(files));
+
+        Assert.Equal(
+            [
+                "S01: spectrometers have different file counts (Spectra_0: 44, Spectra_1: 54).",
+                "S01: Spectra_1 starts at 13:01:10, 70 s after Begin.",
+                "S01: Spectra_0 ends at 13:08:00, 2 min before End.",
+                "S01: Spectra_0 has a 60 s gap after 13:02:00.",
+            ],
+            report.Warnings.Select(w => w.Message));
+        Assert.Equal(
+            [WarningKind.UnevenSpectrometers, WarningKind.LateStart, WarningKind.EarlyEnd, WarningKind.Gap],
+            report.Warnings.Select(w => w.Kind));
     }
 
     [Fact]
