@@ -79,7 +79,15 @@ public partial class MainWindow : Window
         }
 
         _closeRequested = true;
-        await _viewModel.CancelAndWaitAsync();
+        try
+        {
+            await _viewModel.CancelAndWaitAsync();
+        }
+        catch (Exception)
+        {
+            // The Collect handler awaits the same run and shows its failure; here it must not stop the close.
+        }
+
         Close();
     }
 }

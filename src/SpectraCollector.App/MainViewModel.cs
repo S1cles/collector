@@ -229,16 +229,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private bool CanCollect() => !_isRunning && _check.Request is not null;
 
+    /// <summary>The command's UI boundary: anything <see cref="CollectAsync"/> does not map is shown here, never rethrown.</summary>
     private async void Collect()
     {
-        Refresh();
-        if (_isRunning || _check.Request is not { } request)
+        try
         {
-            return;
-        }
+            Refresh();
+            if (_isRunning || _check.Request is not { } request)
+            {
+                return;
+            }
 
-        _run = RunAsync(request);
-        await _run;
+            _run = RunAsync(request);
+            await _run;
+        }
+        catch (Exception e)
+        {
+            Notes.Add(new ResultLine($"Collection failed: {e.Message}", ResultTone.Error));
+        }
     }
 
     private async Task RunAsync(CollectRequest request)
