@@ -86,7 +86,7 @@ the name is taken), containing:
 ```
 spectra_2026-11-06_1305/
   Tech_Spectra/          <- spectra only; this is the folder to import in A.spect
-  samples.csv            <- the input CSV, or the generated one
+  samples.csv            <- the input CSV under its own name, or the generated samples.csv
   collect-report.txt     <- the same report as shown in the window
 ```
 
@@ -97,9 +97,10 @@ No spectra found → no zip.
 ## Report
 
 Per sample: rounded window, file count per spectrometer. Warnings for: a sample with no
-files, spectrometers with different counts in one sample, a gap between consecutive
-files longer than 3× the typical interval, an hour with neither an archive nor loose
-files. After success: the zip path and an "Open folder" button.
+files, spectrometers with different counts in one sample, a spectrometer starting late or
+ending early in a sample, a gap between consecutive files longer than 3× the typical
+interval, an hour with neither an archive nor loose files. After success: the zip path and
+an "Open folder" button.
 
 ## Window
 
