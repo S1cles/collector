@@ -6,7 +6,7 @@ checkbox, a pleasant look, minute rounding, output as one packed folder.
 
 ## Intent
 
-Building an A.spect project starts with step 1 of "Создание проекта в A.spect": a
+Building an A.spect project starts with step 1 of the "Creating a project in A.spect" instruction: a
 service engineer finds the spectrum files for the sampling period on the analyzer PC
 (LyncisAC) and packs them. When the Start/Stop Collection button was not used this is
 manual and slow — thousands of files in `Tech_Spectra`, or hourly zip archives to pick
