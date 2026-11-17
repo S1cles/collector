@@ -52,7 +52,8 @@ S01;;2026-11-06 13:05:00;2026-11-06 13:12:00;
 ```
 
 - Delimiter `;`, `,` or tab, detected from the header. Double-quoted fields allowed.
-- Columns matched by name, case-insensitive; `Sample`, `Begin`, `End` required.
+- Columns matched by name, case-insensitive; `Begin`, `End` required. An empty or missing
+  `Sample` is named by the row's times (Vlad, 2026-11-17): `2026-11-06 13:05:30–13:12:01`.
 - Times: `yyyy-MM-dd HH:mm[:ss]`, `dd.MM.yyyy HH:mm[:ss]`, `dd/MM/yyyy HH:mm[:ss]`.
   Analyzer local time, no time-zone conversion.
 

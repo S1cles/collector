@@ -234,11 +234,5 @@ public sealed class CollectionReport
             ? Math.Round(duration.TotalSeconds, MidpointRounding.AwayFromZero).ToString(CultureInfo.InvariantCulture) + " s"
             : Math.Round(duration.TotalMinutes, MidpointRounding.AwayFromZero).ToString(CultureInfo.InvariantCulture) + " min";
 
-    private static string WindowText(TimeWindow window)
-    {
-        var from = window.From.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        var sameDay = window.From.Date == window.To.Date;
-        var to = window.To.ToString(sameDay ? "HH:mm:ss" : "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        return from + "–" + to;
-    }
+    private static string WindowText(TimeWindow window) => TimeText.Range(window.From, window.To);
 }
