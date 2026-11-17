@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -10,13 +9,15 @@ using SpectraCollector.Core;
 namespace SpectraCollector.App;
 
 /// <summary>
-/// All state of the window. Every input change re-runs <see cref="FormValidator.Check"/>; a collection runs through
-/// <see cref="Collector.RunAsync"/> and every outcome of it, including failures and cancellation, lands in
-/// <see cref="Result"/>.
+/// The form and the run. Every input change re-runs <see cref="FormValidator.Check"/> and previews the result on
+/// <see cref="Sheet"/>; a collection runs through <see cref="Collector.RunAsync"/>, its progress reaches the sheet
+/// through a <see cref="ProgressPump"/>, and every outcome of it, including failures and cancellation, lands there.
 /// </summary>
 public sealed class MainViewModel : INotifyPropertyChanged
 {
     private const string MonthPlaceholder = "<month>";
+    private const string IdleLabel = "Collect spectra";
+    private const string NotSaved = "Not saved";
 
     private readonly string _settingsPath;
     private readonly RelayCommand _collect;
@@ -32,8 +33,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isRunning;
     private bool _isCancelling;
     private CollectPhase _phase;
-    private double _bandFill;
-    private RunView _result = RunView.Empty;
     private FormCheck _check;
     private CancellationTokenSource? _cancellation;
     private Task _run = Task.CompletedTask;
@@ -50,7 +49,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _collect = new RelayCommand(Collect, CanCollect);
         _cancel = new RelayCommand(Cancel, () => _isRunning);
         OpenFolderCommand = new RelayCommand(OpenFolder);
-        ChangeDataCommand = new RelayCommand(() => IsDataEditorOpen = true);
         Refresh();
     }
 
@@ -133,7 +131,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// <summary>Where spectra are read from, with the month folder left as a placeholder.</summary>
     public string DataPathText => Path.Join(_dataRoot, MonthPlaceholder, _belt);
 
-    /// <summary>True once "Change" has revealed the data folder and belt fields.</summary>
+    /// <summary>True once "Change" has revealed the data folder and belt cells.</summary>
     public bool IsDataEditorOpen
     {
         get => _isDataEditorOpen;
@@ -146,56 +144,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public bool IsDataEditorClosed => !_isDataEditorOpen;
 
-    public IReadOnlyList<string> Problems => _check.Problems;
-
-    public bool HasProblems => _check.Problems.Count > 0;
-
-    public string? WindowHint => _check.WindowHint;
-
-    public bool HasWindowHint => _check.WindowHint is not null;
-
     public bool IsRunning => _isRunning;
 
     public bool IsIdle => !_isRunning;
 
-    /// <summary>The Collect button text: what the running collection is doing, or the plain verb when idle.</summary>
+    /// <summary>The primary button text: what the running collection is doing, or the plain verb when idle.</summary>
     public string CollectLabel =>
-        !_isRunning ? "Collect spectra"
+        !_isRunning ? IdleLabel
         : _isCancelling ? "Cancelling…"
         : _phase == CollectPhase.Searching ? "Searching…"
         : "Collecting…";
 
-    /// <summary>The filled share of the spectrum band, 0 to 1: Done/Total of the current phase while running, 1 after a success.</summary>
-    public double BandFill
-    {
-        get => _bandFill;
-        private set
-        {
-            _bandFill = value;
-            Raise(nameof(BandFill));
-        }
-    }
-
-    public RunView Result
-    {
-        get => _result;
-        private set
-        {
-            _result = value;
-            Raise(nameof(Result));
-        }
-    }
-
-    /// <summary>Follow-up lines under the result, such as a settings file that could not be written.</summary>
-    public ObservableCollection<ResultLine> Notes { get; } = [];
+    /// <summary>The report sheet: preview, live fill and result.</summary>
+    public ReportSheet Sheet { get; } = new();
 
     public ICommand CollectCommand => _collect;
 
     public ICommand CancelCommand => _cancel;
 
     public ICommand OpenFolderCommand { get; }
-
-    public ICommand ChangeDataCommand { get; }
 
     /// <summary>Reads saved settings; an unreadable file gives the defaults because every field can be re-entered.</summary>
     public static AppSettings LoadSettings(string path)
@@ -216,9 +183,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         _check = FormValidator.Check(
             new FormInput(_singleInterval, _csvPath, _beginText, _endText, _outputDir, _dataRoot, _belt));
-        Raise(nameof(Problems), nameof(HasProblems), nameof(WindowHint), nameof(HasWindowHint));
+        Sheet.ShowDraft(_singleInterval ? SheetText.SingleIntervalTitle : SheetText.CsvTitle(_csvPath), _check);
         _collect.RaiseCanExecuteChanged();
     }
+
+    /// <summary>Reveals the data folder and belt cells ("Change").</summary>
+    public void OpenDataEditor() => IsDataEditorOpen = true;
 
     /// <summary>Cancels a running collection; the task completes once the window is idle and the outcome is shown.</summary>
     public Task CancelAndWaitAsync()
@@ -229,7 +199,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private bool CanCollect() => !_isRunning && _check.Request is not null;
 
-    /// <summary>The command's UI boundary: anything <see cref="CollectAsync"/> does not map is shown here, never rethrown.</summary>
+    /// <summary>The command's UI boundary: anything <see cref="RunAsync"/> does not map is shown here, never rethrown.</summary>
     private async void Collect()
     {
         try
@@ -245,7 +215,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception e)
         {
-            Notes.Add(new ResultLine($"Collection failed: {e.Message}", ResultTone.Error));
+            var line = new ResultLine($"Collection failed: {e.Message}", ResultTone.Error);
+            if (Sheet.HasSaved)
+            {
+                Sheet.AddNote(line);
+            }
+            else
+            {
+                Sheet.ShowEnded(line, new SheetStamp(NotSaved, StampTone.Error));
+            }
         }
     }
 
@@ -253,64 +231,77 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         using var cancellation = new CancellationTokenSource();
         _cancellation = cancellation;
-        Notes.Clear();
-        Result = RunView.Empty;
-        BandFill = 0;
         _phase = CollectPhase.Searching;
         _isCancelling = false;
+        var title = _singleInterval ? SheetText.SingleIntervalTitle : request.CsvName;
         SetRunning(true);
+        bool saved;
         try
         {
-            Result = await CollectAsync(request, cancellation.Token);
+            Sheet.BeginRun(title, _check.WindowHint, request.Samples, CollectLabel);
+            saved = await CollectAsync(request, cancellation.Token);
         }
         finally
         {
             _cancellation = null;
             _isCancelling = false;
-            BandFill = Result.HasZip ? 1 : 0;
             SetRunning(false);
         }
 
-        if (Result.HasZip)
+        if (saved)
         {
             SaveSettings();
         }
     }
 
-    private async Task<RunView> CollectAsync(CollectRequest request, CancellationToken ct)
+    /// <summary>Runs the collector and shows its result on the sheet; true when a zip was saved.</summary>
+    private async Task<bool> CollectAsync(CollectRequest request, CancellationToken ct)
     {
-        var progress = new Progress<CollectProgress>(ShowProgress);
+        using var pump = new ProgressPump(ShowProgress);
+        CollectResult result;
         try
         {
-            return RunView.Succeeded(await Collector.RunAsync(request, progress, ct));
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            return RunView.Ended(new ResultLine("Cancelled. Nothing was saved.", ResultTone.Quiet));
-        }
-        catch (NothingFoundException e)
-        {
-            return RunView.Ended(new ResultLine(e.Message, ResultTone.Warning));
-        }
-        catch (CollectorException e)
-        {
-            return RunView.Ended(new ResultLine(e.Message, ResultTone.Error));
+            result = await Collector.RunAsync(request, pump, ct);
         }
         catch (Exception e)
         {
-            return RunView.Ended(new ResultLine($"Collection failed: {e.Message}", ResultTone.Error));
+            var (outcome, stamp) = Ending(e, ct);
+            Sheet.ShowEnded(outcome, stamp);
+            return false;
         }
+
+        pump.Stop();
+        Sheet.ShowSaved(result, request.CsvName);
+        return true;
     }
 
-    private void ShowProgress(CollectProgress progress)
+    /// <summary>How a run that saved nothing is shown: Graphite for a cancel, warning colour when nothing was found.</summary>
+    private static (ResultLine Outcome, SheetStamp Stamp) Ending(Exception e, CancellationToken ct) => e switch
     {
-        if (_phase != progress.Phase)
+        OperationCanceledException when ct.IsCancellationRequested => (
+            new ResultLine("Cancelled. Nothing was saved.", ResultTone.Quiet), new SheetStamp("Cancelled", StampTone.Quiet)),
+        NothingFoundException => (
+            new ResultLine(e.Message, ResultTone.Warning), new SheetStamp(NotSaved, StampTone.Warning)),
+        CollectorException => (
+            new ResultLine(e.Message, ResultTone.Error), new SheetStamp(NotSaved, StampTone.Error)),
+        _ => (
+            new ResultLine($"Collection failed: {e.Message}", ResultTone.Error), new SheetStamp(NotSaved, StampTone.Error)),
+    };
+
+    private void ShowProgress(CollectProgress latest, CollectionReport? report)
+    {
+        if (_isCancelling)
         {
-            _phase = progress.Phase;
-            Raise(nameof(CollectLabel));
+            return;
         }
 
-        BandFill = progress.Total == 0 ? 0 : (double)progress.Done / progress.Total;
+        if (_phase != latest.Phase)
+        {
+            _phase = latest.Phase;
+            ShowRunLabel();
+        }
+
+        Sheet.ShowProgress(latest, report);
     }
 
     private void Cancel()
@@ -322,7 +313,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         _cancellation.Cancel();
         _isCancelling = true;
+        ShowRunLabel();
+    }
+
+    private void ShowRunLabel()
+    {
         Raise(nameof(CollectLabel));
+        if (_isRunning)
+        {
+            Sheet.SetRunLabel(CollectLabel);
+        }
     }
 
     private void SaveSettings()
@@ -334,13 +334,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            Notes.Add(new ResultLine($"Settings could not be saved: {e.Message}", ResultTone.Quiet));
+            Sheet.AddNote(new ResultLine($"Settings could not be saved: {e.Message}", ResultTone.Quiet));
         }
     }
 
     private void OpenFolder()
     {
-        if (Result.ZipPath is not { } zip)
+        if (Sheet.SavedZipPath is not { } zip)
         {
             return;
         }
@@ -352,7 +352,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
         catch (Win32Exception e)
         {
-            Notes.Add(new ResultLine($"Cannot open the folder: {e.Message}", ResultTone.Error));
+            Sheet.AddNote(new ResultLine($"Cannot open the folder: {e.Message}", ResultTone.Error));
         }
     }
 
@@ -364,6 +364,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _cancel.RaiseCanExecuteChanged();
     }
 
+    /// <summary>Stores a changed input, drops a shown run result and re-validates; false when nothing changed.</summary>
     private bool SetInput<T>(ref T storage, T value, [CallerMemberName] string name = "")
     {
         if (EqualityComparer<T>.Default.Equals(storage, value))
@@ -373,6 +374,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         storage = value;
         Raise(name);
+        if (!_isRunning)
+        {
+            Sheet.LeaveRun();
+        }
+
         Refresh();
         return true;
     }

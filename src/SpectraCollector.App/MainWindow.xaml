@@ -6,7 +6,7 @@
         Icon="Assets/SpectraCollector.ico"
         Width="780" Height="700" MinWidth="680" MinHeight="560"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource MistBrush}"
+        Background="{StaticResource WindowBrush}"
         Foreground="{StaticResource InkBrush}"
         FontFamily="{StaticResource TextFont}"
         FontSize="{StaticResource BodySize}"
@@ -31,232 +31,394 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
+        <Style x:Key="Stamp" TargetType="Border" BasedOn="{StaticResource StampBase}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Sheet.Stamp.Tone}" Value="{x:Static local:StampTone.Success}">
+                    <Setter Property="TextElement.Foreground" Value="{StaticResource SuccessBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Sheet.Stamp.Tone}" Value="{x:Static local:StampTone.Quiet}">
+                    <Setter Property="TextElement.Foreground" Value="{StaticResource GraphiteBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Sheet.Stamp.Tone}" Value="{x:Static local:StampTone.Warning}">
+                    <Setter Property="TextElement.Foreground" Value="{StaticResource WarningBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Sheet.Stamp.Tone}" Value="{x:Static local:StampTone.Error}">
+                    <Setter Property="TextElement.Foreground" Value="{StaticResource ErrorBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <ItemsPanelTemplate x:Key="RowCells">
+            <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+
+        <DataTemplate x:Key="ColumnHeaderTemplate">
+            <Grid Margin="8,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="80" SharedSizeGroup="Count" />
+                </Grid.ColumnDefinitions>
+                <TextBlock HorizontalAlignment="Right" Text="{Binding}" Style="{StaticResource ColumnHeader}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="CountCellTemplate" DataType="{x:Type local:CountCell}">
+            <Grid Margin="8,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="80" SharedSizeGroup="Count" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="Count" Text="{Binding Text}" Style="{StaticResource CountText}" />
+                <Line x:Name="Blank" Width="44" Height="16" X1="0" Y1="15.5" X2="44" Y2="15.5"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed"
+                      Stroke="{StaticResource BlankRuleBrush}" StrokeThickness="1" StrokeDashArray="1 1" />
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsBlank}" Value="True">
+                    <Setter TargetName="Count" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Blank" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TotalCellTemplate">
+            <Grid Margin="8,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="80" SharedSizeGroup="Count" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding}" Style="{StaticResource TotalCountText}" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Header, sample rows and Total share these six columns through the sheet's shared size scope. -->
+        <DataTemplate x:Key="SampleRowTemplate" DataType="{x:Type local:SheetRow}">
+            <Border MinHeight="34" BorderBrush="{StaticResource RowRuleBrush}" BorderThickness="0,0,0,1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.6*" MinWidth="72" />
+                        <ColumnDefinition Width="Auto" MinWidth="88" SharedSizeGroup="From" />
+                        <ColumnDefinition Width="Auto" MinWidth="88" SharedSizeGroup="To" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Counts" />
+                        <ColumnDefinition Width="Auto" MinWidth="60" SharedSizeGroup="Note" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Name}" ToolTip="{Binding Name}" Style="{StaticResource SampleName}" />
+                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="{Binding From}" Style="{StaticResource DisplayText}" />
+                    <TextBlock Grid.Column="2" Margin="8,0,0,0" Text="{Binding To}" Style="{StaticResource DisplayText}" />
+                    <ItemsControl x:Name="CountCells" Grid.Column="4" VerticalAlignment="Center" Focusable="False"
+                                  ItemsSource="{Binding Cells}" ItemsPanel="{StaticResource RowCells}"
+                                  ItemTemplate="{StaticResource CountCellTemplate}" />
+                    <Grid x:Name="Filling" Grid.Column="3" Grid.ColumnSpan="2" Margin="8,0,0,0" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" Text="Collecting…" FontWeight="SemiBold"
+                                   FontSize="{StaticResource ButtonSize}" />
+                        <ProgressBar Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource RowBar}"
+                                     Value="{Binding Fill, Mode=OneWay}" />
+                    </Grid>
+                    <Grid Grid.Column="5" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Image x:Name="CheckMark" Width="12" Height="12" Visibility="Collapsed"
+                               Source="{StaticResource CheckIcon}" />
+                        <StackPanel x:Name="WarningMark" Orientation="Horizontal" Visibility="Collapsed">
+                            <Image Width="14" Height="14" Source="{StaticResource WarningIcon}" />
+                            <TextBlock Margin="4,0,0,0" Text="{Binding NoteNumbers}" Style="{StaticResource NoteText}" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsCollecting}" Value="True">
+                    <Setter TargetName="CountCells" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Filling" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Note}" Value="{x:Static local:NoteMark.Ok}">
+                    <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Note}" Value="{x:Static local:NoteMark.Warning}">
+                    <Setter TargetName="WarningMark" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="FootnoteTemplate" DataType="{x:Type local:Footnote}">
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="FootnoteNumber" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Top" Text="{Binding Number}" Style="{StaticResource NoteText}" />
+                <TextBlock Grid.Column="1" Margin="6,0,0,0" Text="{Binding Text}" TextWrapping="Wrap"
+                           FontSize="{StaticResource ButtonSize}" Foreground="{StaticResource WarningBrush}" />
+            </Grid>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Margin="24">
-            <StackPanel Orientation="Horizontal">
-                <Rectangle Width="4" Height="22" VerticalAlignment="Center" Fill="{StaticResource LyncisRedBrush}" />
-                <TextBlock Margin="8,0,0,0" Text="SpectraCollector" Style="{StaticResource TitleText}" />
-            </StackPanel>
-
-            <ProgressBar Margin="0,8,0,24" Style="{StaticResource SpectrumBand}"
-                         Value="{Binding BandFill, Mode=OneWay}" />
-
-            <StackPanel Grid.IsSharedSizeScope="True" IsEnabled="{Binding IsIdle}">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="130" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Samples" Style="{StaticResource FieldLabel}" />
-                    <Border Grid.Column="1" Style="{StaticResource SegmentTrack}">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Content="From CSV file" Style="{StaticResource SegmentFirst}"
-                                         IsChecked="{Binding IsCsvMode}" />
-                            <RadioButton Content="Single interval" Style="{StaticResource SegmentLast}"
-                                         IsChecked="{Binding SingleInterval}" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
-
-                <Grid Margin="0,8,0,0"
-                      Visibility="{Binding IsCsvMode, Converter={StaticResource VisibleWhenTrue}}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="130" />
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="Action" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="CSV file" Style="{StaticResource SubLabel}" />
-                    <TextBox Grid.Column="2" Style="{StaticResource InputBox}"
-                             Text="{Binding CsvPath, UpdateSourceTrigger=PropertyChanged}" />
-                    <Button Grid.Column="3" Margin="8,0,0,0" Content="Browse…"
-                            Style="{StaticResource SecondaryButton}" Click="OnBrowseCsv" />
-                </Grid>
-
-                <StackPanel Visibility="{Binding SingleInterval, Converter={StaticResource VisibleWhenTrue}}">
-                    <Grid Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="130" />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="Begin" Style="{StaticResource SubLabel}" />
-                        <TextBox Grid.Column="2" Style="{StaticResource TimeBox}"
-                                 Text="{Binding BeginText, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-                    <Grid Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="130" />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="End" Style="{StaticResource SubLabel}" />
-                        <TextBox Grid.Column="2" Style="{StaticResource TimeBox}"
-                                 Text="{Binding EndText, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-                </StackPanel>
-
-                <TextBlock Margin="130,8,0,0" Text="{Binding WindowHint}" Style="{StaticResource HintText}"
-                           Visibility="{Binding HasWindowHint, Converter={StaticResource VisibleWhenTrue}}" />
-
-                <Grid Margin="0,16,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="130" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="Action" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Save zip to" Style="{StaticResource FieldLabel}" />
-                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}"
-                             Text="{Binding OutputDir, UpdateSourceTrigger=PropertyChanged}" />
-                    <Button Grid.Column="2" Margin="8,0,0,0" Content="Browse…"
-                            Style="{StaticResource SecondaryButton}" Click="OnBrowseOutput" />
-                </Grid>
-
-                <Grid Margin="0,16,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="130" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="Action" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Analyzer data" Style="{StaticResource FieldLabel}" />
-                    <TextBlock Grid.Column="1" Text="{Binding DataPathText}" ToolTip="{Binding DataPathText}"
-                               Foreground="{StaticResource GraphiteBrush}" VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" />
-                    <Button Grid.Column="2" Margin="8,0,0,0" Content="Change"
-                            Style="{StaticResource SecondaryButton}" Command="{Binding ChangeDataCommand}"
-                            Visibility="{Binding IsDataEditorClosed, Converter={StaticResource VisibleWhenTrue}}" />
-                </Grid>
-
-                <StackPanel Visibility="{Binding IsDataEditorOpen, Converter={StaticResource VisibleWhenTrue}}">
-                    <Grid Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="130" />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" SharedSizeGroup="Action" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="Data folder" Style="{StaticResource SubLabel}" />
-                        <TextBox Grid.Column="2" Style="{StaticResource InputBox}"
-                                 Text="{Binding DataRoot, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Grid.Column="3" Margin="8,0,0,0" Content="Browse…"
-                                Style="{StaticResource SecondaryButton}" Click="OnBrowseData" />
-                    </Grid>
-                    <Grid Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="130" />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" SharedSizeGroup="Action" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="1" Text="Belt folder" Style="{StaticResource SubLabel}" />
-                        <TextBox Grid.Column="2" Style="{StaticResource InputBox}"
-                                 Text="{Binding Belt, UpdateSourceTrigger=PropertyChanged}" />
-                    </Grid>
-                </StackPanel>
-
-                <ItemsControl Margin="130,16,0,0" Focusable="False" ItemsSource="{Binding Problems}"
-                              Visibility="{Binding HasProblems, Converter={StaticResource VisibleWhenTrue}}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Margin="0,0,0,4" Text="{Binding}" TextWrapping="Wrap"
-                                       Foreground="{StaticResource WarningBrush}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
-            <StackPanel Margin="0,16,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Margin="0,0,8,0" Content="Cancel" IsCancel="True"
-                        Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"
-                        Visibility="{Binding IsRunning, Converter={StaticResource VisibleWhenTrue}}" />
-                <Button Content="{Binding CollectLabel}" IsDefault="True"
-                        Style="{StaticResource PrimaryButton}" Command="{Binding CollectCommand}" />
-            </StackPanel>
+        <StackPanel Margin="20,12,20,0" Orientation="Horizontal">
+            <Rectangle Width="4" Height="18" VerticalAlignment="Center" Fill="{StaticResource LyncisRedBrush}" />
+            <TextBlock Margin="8,0,0,0" Text="SpectraCollector" Style="{StaticResource AppTitle}" />
         </StackPanel>
 
-        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource RuleBrush}" BorderThickness="0,1,0,0">
-            <ScrollViewer Padding="24,16,24,16" Focusable="False"
-                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <StackPanel>
-                    <ItemsControl Focusable="False" Grid.IsSharedSizeScope="True"
-                                  ItemsSource="{Binding Result.Samples}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type local:SampleRow}">
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="SampleName" />
-                                        <ColumnDefinition Width="Auto" SharedSizeGroup="SampleWindow" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Margin="0,0,24,0" Text="{Binding Name}"
-                                               Style="{StaticResource DisplayText}" />
-                                    <TextBlock Grid.Column="1" Margin="0,0,24,0" Text="{Binding Window}"
-                                               Style="{StaticResource DisplayText}"
-                                               Foreground="{StaticResource GraphiteBrush}" />
-                                    <ItemsControl Grid.Column="2" Focusable="False" ItemsSource="{Binding Counts}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type local:SpectrometerCount}">
-                                                <Grid Margin="0,0,24,0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="CountLabel" />
-                                                        <ColumnDefinition Width="Auto" SharedSizeGroup="CountValue" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="{Binding Label}"
-                                                               Foreground="{StaticResource GraphiteBrush}" />
-                                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" TextAlignment="Right"
-                                                               Text="{Binding Count}"
-                                                               Style="{StaticResource DisplayText}" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Grid.Column="3" Text="⚠" Foreground="{StaticResource WarningBrush}"
-                                               Visibility="{Binding HasWarning, Converter={StaticResource VisibleWhenTrue}}" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+        <Border Grid.Row="1" Margin="20,10,20,0" Style="{StaticResource FormFrame}" IsEnabled="{Binding IsIdle}">
+            <Border ClipToBounds="True">
+                <Grid Margin="-1,-1,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="238" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <ItemsControl Focusable="False" ItemsSource="{Binding Result.Warnings}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Margin="0,0,0,4" Text="{Binding}" TextWrapping="Wrap"
-                                           Foreground="{StaticResource WarningBrush}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <HeaderedContentControl Header="Samples" Style="{StaticResource FormCell}">
+                        <Border Style="{StaticResource SegmentTrack}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="From CSV file" Style="{StaticResource SegmentFirst}"
+                                             IsChecked="{Binding IsCsvMode}" />
+                                <RadioButton Content="Single interval" Style="{StaticResource SegmentLast}"
+                                             IsChecked="{Binding SingleInterval}" />
+                            </StackPanel>
+                        </Border>
+                    </HeaderedContentControl>
 
-                    <Grid Margin="0,8,0,8"
-                          Visibility="{Binding Result.HasZip, Converter={StaticResource VisibleWhenTrue}}">
+                    <HeaderedContentControl Grid.Column="1" Grid.ColumnSpan="2" Header="CSV file"
+                                            Style="{StaticResource FormCell}"
+                                            Visibility="{Binding IsCsvMode, Converter={StaticResource VisibleWhenTrue}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="Browse…"
+                                    Style="{StaticResource CellButton}" Click="OnBrowseCsv" />
+                            <TextBox AutomationProperties.Name="CSV file" Style="{StaticResource CellInput}"
+                                     Text="{Binding CsvPath, UpdateSourceTrigger=PropertyChanged}" />
+                        </DockPanel>
+                    </HeaderedContentControl>
+
+                    <HeaderedContentControl Grid.Column="1" Header="Begin" Style="{StaticResource FormCell}"
+                                            Visibility="{Binding SingleInterval, Converter={StaticResource VisibleWhenTrue}}">
+                        <TextBox AutomationProperties.Name="Begin" Style="{StaticResource CellTimeInput}"
+                                 Text="{Binding BeginText, UpdateSourceTrigger=PropertyChanged}" />
+                    </HeaderedContentControl>
+
+                    <HeaderedContentControl Grid.Column="2" Header="End" Style="{StaticResource FormCell}"
+                                            Visibility="{Binding SingleInterval, Converter={StaticResource VisibleWhenTrue}}">
+                        <TextBox AutomationProperties.Name="End" Style="{StaticResource CellTimeInput}"
+                                 Text="{Binding EndText, UpdateSourceTrigger=PropertyChanged}" />
+                    </HeaderedContentControl>
+
+                    <HeaderedContentControl Grid.Row="1" Header="Save zip to" Style="{StaticResource FormCell}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="Browse…"
+                                    Style="{StaticResource CellButton}" Click="OnBrowseOutput" />
+                            <TextBox AutomationProperties.Name="Save zip to" Style="{StaticResource CellInput}"
+                                     Text="{Binding OutputDir, UpdateSourceTrigger=PropertyChanged}" />
+                        </DockPanel>
+                    </HeaderedContentControl>
+
+                    <HeaderedContentControl Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Header="Analyzer data"
+                                            Style="{StaticResource FormCell}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="Change"
+                                    Style="{StaticResource CellButton}" Click="OnChangeData"
+                                    Visibility="{Binding IsDataEditorClosed, Converter={StaticResource VisibleWhenTrue}}" />
+                            <TextBlock Text="{Binding DataPathText}" ToolTip="{Binding DataPathText}"
+                                       Style="{StaticResource CellValue}" />
+                        </DockPanel>
+                    </HeaderedContentControl>
+
+                    <HeaderedContentControl Grid.Row="2" Grid.ColumnSpan="2" Header="Data folder"
+                                            Style="{StaticResource FormCell}"
+                                            Visibility="{Binding IsDataEditorOpen, Converter={StaticResource VisibleWhenTrue}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="Browse…"
+                                    Style="{StaticResource CellButton}" Click="OnBrowseData" />
+                            <TextBox x:Name="DataRootBox" AutomationProperties.Name="Data folder"
+                                     Style="{StaticResource CellInput}"
+                                     Text="{Binding DataRoot, UpdateSourceTrigger=PropertyChanged}" />
+                        </DockPanel>
+                    </HeaderedContentControl>
+
+                    <HeaderedContentControl Grid.Row="2" Grid.Column="2" Header="Belt folder"
+                                            Style="{StaticResource FormCell}"
+                                            Visibility="{Binding IsDataEditorOpen, Converter={StaticResource VisibleWhenTrue}}">
+                        <TextBox AutomationProperties.Name="Belt folder" Style="{StaticResource CellInput}"
+                                 Text="{Binding Belt, UpdateSourceTrigger=PropertyChanged}" />
+                    </HeaderedContentControl>
+                </Grid>
+            </Border>
+        </Border>
+
+        <Border Grid.Row="2" Margin="20,12,20,16" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SheetBorderBrush}" BorderThickness="1">
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ProgressBar Style="{StaticResource SpectrumBand}" Value="{Binding Sheet.BandFill, Mode=OneWay}" />
+
+                <Grid Grid.Row="1" Margin="20,14,20,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Sheet.Title}" ToolTip="{Binding Sheet.Title}"
+                                   Style="{StaticResource SheetTitle}" />
+                        <TextBlock Margin="0,3,0,0" Text="{Binding Sheet.Subtitle}" Style="{StaticResource SheetSubtitle}"
+                                   Visibility="{Binding Sheet.HasSubtitle, Converter={StaticResource VisibleWhenTrue}}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                        <TextBlock HorizontalAlignment="Right" Text="collect-report.txt" Style="{StaticResource MonoText}"
+                                   Foreground="{StaticResource GraphiteBrush}" />
+                        <Border Margin="0,6,0,0" Style="{StaticResource Stamp}"
+                                Visibility="{Binding Sheet.HasStamp, Converter={StaticResource VisibleWhenTrue}}">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Width="12" Height="12" Margin="0,0,6,0" VerticalAlignment="Center"
+                                       Source="{StaticResource CheckIcon}"
+                                       Visibility="{Binding Sheet.Stamp.HasCheck, Converter={StaticResource VisibleWhenTrue}, FallbackValue=Collapsed}" />
+                                <TextBlock Text="{Binding Sheet.Stamp.Text}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <Border Grid.Row="2" Margin="20,0" MinHeight="28" BorderBrush="{StaticResource InkBrush}"
+                        BorderThickness="0,0,0,1"
+                        Visibility="{Binding Sheet.ShowTable, Converter={StaticResource VisibleWhenTrue}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.6*" MinWidth="72" />
+                            <ColumnDefinition Width="Auto" MinWidth="88" SharedSizeGroup="From" />
+                            <ColumnDefinition Width="Auto" MinWidth="88" SharedSizeGroup="To" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Counts" />
+                            <ColumnDefinition Width="Auto" MinWidth="60" SharedSizeGroup="Note" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Sample" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Grid.Column="1" Margin="8,0,0,0" Text="Files from" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Grid.Column="2" Margin="8,0,0,0" Text="to" Style="{StaticResource ColumnHeader}" />
+                        <ItemsControl Grid.Column="4" VerticalAlignment="Center" Focusable="False"
+                                      ItemsSource="{Binding Sheet.Columns}" ItemsPanel="{StaticResource RowCells}"
+                                      ItemTemplate="{StaticResource ColumnHeaderTemplate}" />
+                        <TextBlock Grid.Column="5" Margin="8,0,0,0" HorizontalAlignment="Right" Text="Note"
+                                   Style="{StaticResource ColumnHeader}" />
+                    </Grid>
+                </Border>
+
+                <ScrollViewer Grid.Row="3" Style="{StaticResource SheetScroll}">
+                    <StackPanel Margin="0,0,0,16">
+                        <ItemsControl Margin="20,4,20,0" Focusable="False" ItemsSource="{Binding Sheet.Problems}"
+                                      Visibility="{Binding Sheet.HasProblems, Converter={StaticResource VisibleWhenTrue}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,0,0,4" Text="{Binding}" TextWrapping="Wrap"
+                                               Foreground="{StaticResource WarningBrush}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <ItemsControl Margin="20,0" Focusable="False" ItemsSource="{Binding Sheet.Rows}"
+                                      ItemTemplate="{StaticResource SampleRowTemplate}"
+                                      Visibility="{Binding Sheet.ShowTable, Converter={StaticResource VisibleWhenTrue}}" />
+
+                        <Grid Margin="20,-1,20,0"
+                              Visibility="{Binding Sheet.HasSummary, Converter={StaticResource VisibleWhenTrue}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.6*" MinWidth="72" />
+                                <ColumnDefinition Width="Auto" MinWidth="88" SharedSizeGroup="From" />
+                                <ColumnDefinition Width="Auto" MinWidth="88" SharedSizeGroup="To" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="Counts" />
+                                <ColumnDefinition Width="Auto" MinWidth="60" SharedSizeGroup="Note" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" MinHeight="34" />
+                            </Grid.RowDefinitions>
+                            <Border Grid.ColumnSpan="6" Height="3" BorderBrush="{StaticResource InkBrush}"
+                                    BorderThickness="0,1" />
+                            <TextBlock Grid.Row="1" Text="Total" Style="{StaticResource SampleName}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,0,0,0"
+                                       Text="{Binding Sheet.Summary.TotalFiles}" Style="{StaticResource DisplayText}"
+                                       Foreground="{StaticResource GraphiteBrush}" />
+                            <ItemsControl Grid.Row="1" Grid.Column="4" VerticalAlignment="Center" Focusable="False"
+                                          ItemsSource="{Binding Sheet.Summary.Totals}"
+                                          ItemsPanel="{StaticResource RowCells}"
+                                          ItemTemplate="{StaticResource TotalCellTemplate}" />
+                        </Grid>
+
+                        <ItemsControl Margin="20,6,20,0" Focusable="False" Grid.IsSharedSizeScope="True"
+                                      ItemsSource="{Binding Sheet.Summary.Footnotes}"
+                                      ItemTemplate="{StaticResource FootnoteTemplate}"
+                                      Visibility="{Binding Sheet.HasSummary, Converter={StaticResource VisibleWhenTrue}}" />
+
+                        <ContentPresenter Margin="20,10,20,0" Content="{Binding Sheet.Outcome}" />
+
+                        <Border Margin="20,12,20,0" Padding="12,8" CornerRadius="3"
+                                Background="{StaticResource ZipBlockBrush}"
+                                Visibility="{Binding Sheet.HasSummary, Converter={StaticResource VisibleWhenTrue}}">
+                            <StackPanel>
+                                <TextBlock Margin="0,0,0,2" Text="Zip contents" FontSize="{StaticResource LabelSize}"
+                                           Foreground="{StaticResource GraphiteBrush}" />
+                                <TextBlock Text="{Binding Sheet.Summary.Zip.Folder, StringFormat={}{0}/}"
+                                           Style="{StaticResource ZipLine}" />
+                                <DockPanel Margin="14,0,0,0">
+                                    <TextBlock DockPanel.Dock="Right" Margin="12,0,0,0"
+                                               Text="{Binding Sheet.Summary.Zip.SpectraFiles}"
+                                               Style="{StaticResource ZipLine}" Foreground="{StaticResource GraphiteBrush}" />
+                                    <TextBlock Text="Tech_Spectra/" Style="{StaticResource ZipLine}" />
+                                </DockPanel>
+                                <TextBlock Margin="14,0,0,0" Text="{Binding Sheet.Summary.Zip.CsvName}"
+                                           Style="{StaticResource ZipLine}" />
+                                <TextBlock Margin="14,0,0,0" Text="{Binding Sheet.Summary.Zip.ReportName}"
+                                           Style="{StaticResource ZipLine}" />
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl Margin="20,10,20,0" Focusable="False" ItemsSource="{Binding Sheet.Notes}" />
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Border Grid.Row="4" Padding="20,11" Background="{StaticResource FooterBrush}"
+                        BorderBrush="{StaticResource SheetBorderBrush}" BorderThickness="0,1,0,0">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding Result.SavedText}"
-                                   Foreground="{StaticResource SuccessBrush}" />
-                        <Button Grid.Column="1" Margin="16,0,0,0" Content="Open folder"
-                                Style="{StaticResource SecondaryButton}" Command="{Binding OpenFolderCommand}" />
+                        <TextBlock Text="{Binding Sheet.StatusText}" Style="{StaticResource DisplayText}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding Sheet.HasStatus, Converter={StaticResource VisibleWhenTrue}}" />
+                        <DockPanel HorizontalAlignment="Left"
+                                   Visibility="{Binding Sheet.HasSaved, Converter={StaticResource VisibleWhenTrue}}">
+                            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="Open folder"
+                                    Style="{StaticResource FooterButton}" Command="{Binding OpenFolderCommand}" />
+                            <TextBlock VerticalAlignment="Center" Text="{Binding Sheet.SavedText}"
+                                       ToolTip="{Binding Sheet.SavedZipPath}" TextTrimming="CharacterEllipsis"
+                                       Foreground="{StaticResource SuccessBrush}" />
+                        </DockPanel>
+                        <Button Grid.Column="1" Margin="8,0,0,0" Content="Cancel" IsCancel="True"
+                                Style="{StaticResource FooterButton}" Command="{Binding CancelCommand}"
+                                Visibility="{Binding IsRunning, Converter={StaticResource VisibleWhenTrue}}" />
+                        <Button Grid.Column="2" Margin="8,0,0,0" Content="{Binding CollectLabel}" IsDefault="True"
+                                Style="{StaticResource PrimaryButton}" Command="{Binding CollectCommand}" />
                     </Grid>
-
-                    <ContentPresenter Content="{Binding Result.Outcome}" />
-
-                    <ItemsControl Focusable="False" ItemsSource="{Binding Notes}" />
-                </StackPanel>
-            </ScrollViewer>
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </Window>
