@@ -40,7 +40,9 @@ S01;;2026-11-06 13:05:00;2026-11-06 13:12:00;Feldspar
 ```
 
 - Delimiter `;`, `,` or tab, detected from the header. Double-quoted fields are allowed.
-- Columns are matched by name, case-insensitive. `Sample`, `Begin` and `End` are required.
+- Columns are matched by name, case-insensitive. `Begin` and `End` are required.
+- `Sample` is optional. A sample with an empty name, or every sample when the column is
+  missing, is named by its times as written, e.g. `2026-11-06 13:05:30–13:12:01`.
 - Times: `yyyy-MM-dd HH:mm[:ss]`, `dd.MM.yyyy HH:mm[:ss]`, `dd/MM/yyyy HH:mm[:ss]`.
   This is the analyzer's local time; no time-zone conversion is done.
 

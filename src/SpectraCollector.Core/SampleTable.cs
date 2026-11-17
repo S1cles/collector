@@ -23,9 +23,9 @@ public static class SampleTable
         var headerText = lines[headerIndex].Text.TrimStart('﻿');
         var delimiter = Delimiters.FirstOrDefault(headerText.Contains, ';');
         var header = SplitFields(headerText, delimiter, 1);
-        var sampleColumn = ColumnOf(header, "Sample");
-        var beginColumn = ColumnOf(header, "Begin");
-        var endColumn = ColumnOf(header, "End");
+        var sampleColumn = IndexOf(header, "Sample");
+        var beginColumn = RequiredColumnOf(header, "Begin");
+        var endColumn = RequiredColumnOf(header, "End");
 
         var samples = new List<Sample>();
         foreach (var (number, text) in lines.Skip(headerIndex + 1))
@@ -36,12 +36,6 @@ public static class SampleTable
             }
 
             var fields = SplitFields(text, delimiter, number);
-            var name = FieldAt(fields, sampleColumn);
-            if (name.Length == 0)
-            {
-                throw Fail(number, "Sample name is empty.");
-            }
-
             var begin = TimeAt(fields, beginColumn, "Begin", "2026-11-06 13:30:00", number);
             var end = TimeAt(fields, endColumn, "End", "2026-11-06 13:40:00", number);
             if (end < begin)
@@ -49,7 +43,8 @@ public static class SampleTable
                 throw Fail(number, "End is earlier than Begin.");
             }
 
-            samples.Add(new Sample(name, begin, end));
+            var name = FieldAt(fields, sampleColumn);
+            samples.Add(new Sample(name.Length > 0 ? name : TimeText.Range(begin, end), begin, end));
         }
 
         if (samples.Count == 0)
@@ -90,14 +85,18 @@ public static class SampleTable
     private static bool IsBlank(string text, char? delimiter) =>
         text.All(c => char.IsWhiteSpace(c) || c == delimiter);
 
-    private static int ColumnOf(List<string> header, string name)
+    private static int IndexOf(List<string> header, string name) =>
+        header.FindIndex(h => h.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    private static int RequiredColumnOf(List<string> header, string name)
     {
-        var index = header.FindIndex(h => h.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var index = IndexOf(header, name);
         return index >= 0 ? index : throw Fail(1, $"Column '{name}' is missing.");
     }
 
+    /// <summary>Empty when the column is absent (<c>-1</c>) or the row is short.</summary>
     private static string FieldAt(List<string> fields, int column) =>
-        column < fields.Count ? fields[column] : string.Empty;
+        column >= 0 && column < fields.Count ? fields[column] : string.Empty;
 
     private static DateTime TimeAt(List<string> fields, int column, string label, string example, int number) =>
         SampleTime.TryParse(FieldAt(fields, column), out var value)

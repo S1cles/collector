@@ -130,9 +130,28 @@ public class SampleTableTests
     }
 
     [Fact]
-    public void Parse_ReportsEmptyName()
+    public void Parse_NamesASampleWithoutANameByItsTimes()
     {
-        Assert.Equal("Line 2: Sample name is empty.", MessageOf("Sample;Begin;End\n ;2026-11-06 13:05;2026-11-06 13:12\n"));
+        var sample = Assert.Single(Parse("Sample;Begin;End\n ;2026-11-06 13:05:30;2026-11-06 13:12:01\n"));
+
+        Assert.Equal("2026-11-06 13:05:30–13:12:01", sample.Name);
+    }
+
+    [Fact]
+    public void Parse_NamesASampleCrossingMidnightWithBothDates()
+    {
+        var sample = Assert.Single(Parse("Sample;Begin;End\n;2026-11-06 23:58:00;2026-11-07 00:03:00\n"));
+
+        Assert.Equal("2026-11-06 23:58:00–2026-11-07 00:03:00", sample.Name);
+    }
+
+    [Fact]
+    public void Parse_WithoutSampleColumn_NamesEverySampleByItsTimes()
+    {
+        var samples = Parse("Begin;End\n2026-11-06 13:05;2026-11-06 13:12\n2026-11-06 13:20;2026-11-06 13:28\n");
+
+        Assert.Equal(
+            ["2026-11-06 13:05:00–13:12:00", "2026-11-06 13:20:00–13:28:00"], samples.Select(s => s.Name));
     }
 
     [Fact]
