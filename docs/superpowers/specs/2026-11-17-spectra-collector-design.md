@@ -1,7 +1,8 @@
 # SpectraCollector — design
 
-Date: 2026-11-17. Status: approved by Vlad in chat (with the minute-rounding rule and
-the "packed folder" output added during review).
+Date: 2026-11-17. Status: approved by Vlad in chat. Revised the same day: a window with
+Begin/End fields instead of a command line, an installer with a desktop-shortcut
+checkbox, a pleasant look, minute rounding, output as one packed folder.
 
 ## Intent
 
@@ -11,17 +12,19 @@ service engineer finds the spectrum files for the sampling period on the analyze
 manual and slow — thousands of files in `Tech_Spectra`, or hourly zip archives to pick
 and unpack, with Explorer resetting the selection while LyncisAC keeps writing.
 
-SpectraCollector does that step from a CSV of sample times and leaves one zip in a
-chosen folder. The engineer copies the zip to their own computer and continues with
-step 2 (import into A.spect).
+SpectraCollector does that step: the engineer gives sample times (a CSV, or one
+Begin/End pair typed in), picks a folder, presses one button and gets one zip. They copy
+the zip to their own computer and continue with step 2 (import into A.spect).
 
 ## Goals
 
-- Input: a CSV with sample names and begin/end times; an output folder.
+- Sample times from a CSV file, or from Begin/End fields for a single interval.
 - Find every spectrum file of every spectrometer inside each sample's window, whether
   the spectra archiver is on (hourly zips), off (loose files) or the hour is not
   archived yet (archiver packs ~2 h after the hour).
-- Output one zip containing one folder ready for A.spect import.
+- Output one zip with one folder ready for A.spect import.
+- A small Windows app that is pleasant to look at, installed by a `Setup.exe` with a
+  "Create a desktop shortcut" checkbox; also a standalone exe that needs no install.
 
 ## Non-goals
 
@@ -29,21 +32,17 @@ step 2 (import into A.spect).
   analysis file and verifies the times by hand.
 - Creating the A.spect project or any step after import.
 - The Start/Stop Collection case (`Collected_Samples`) — that data is already gathered.
+- A command-line mode (dropped once the window was asked for).
 
 ## Anti-goals
 
 - Never modify, move or delete anything under the LyncisAC data folder; never disturb
   the running LyncisAC (read with full sharing, no locks).
-- Never leave a half-written zip that looks complete.
+- Never leave a half-written zip that looks complete (also on Cancel).
 - Never silently produce an incomplete result: missing data is reported per sample.
+- Never freeze the window while collecting.
 
-## Inputs
-
-Command line:
-
-```
-SpectraCollector.exe <samples.csv> <output-folder> [--data D:\LyncisAC_DATA] [--belt Main\Belt_1]
-```
+## Sample times
 
 CSV — the same columns as A.spect's Exposition Timetable, header row required:
 
@@ -57,10 +56,14 @@ S01;;2026-11-06 13:05:00;2026-11-06 13:12:00;
 - Times: `yyyy-MM-dd HH:mm[:ss]`, `dd.MM.yyyy HH:mm[:ss]`, `dd/MM/yyyy HH:mm[:ss]`.
   Analyzer local time, no time-zone conversion.
 
+Single interval — Begin and End text fields accepting the same time formats, one sample
+named `Sample_1`. A `samples.csv` in the format above is generated for the zip.
+
 ## Selection rule (decided by Vlad)
 
 Each sample's window is `[floor(Begin) to the minute, ceil(End) to the minute]`, both ends
-inclusive. Example: 13:30:30–13:40:01 → files from 13:30:00 to 13:41:00.
+inclusive. Example: 13:30:30–13:40:01 → files from 13:30:00 to 13:41:00. The window shows
+the rounded range live under the Begin/End fields.
 
 ## Data layout (from the instruction and a screenshot)
 
@@ -69,6 +72,7 @@ inclusive. Example: 13:30:30–13:40:01 → files from 13:30:00 to 13:41:00.
 <data>\<yyyy_MM>\<belt>\Packed_Spectra\spect_data_2026-11-06_13.zip   (spectra 13:00–13:59)
 ```
 
+- Defaults: data `D:\LyncisAC_DATA`, belt `Main\Belt_1`; both editable, remembered.
 - File time comes from the name (`yyyy.MM.dd_HH.mm.ss`); `<n>` is the spectrometer.
 - For every hour a window touches: read the hour's archive if present, and also scan
   `Tech_Spectra` for that hour. A file seen in both is taken once.
@@ -82,33 +86,88 @@ the name is taken), containing:
 ```
 spectra_2026-11-06_1305/
   Tech_Spectra/          <- spectra only; this is the folder to import in A.spect
-  samples.csv            <- copy of the input CSV
-  collect-report.txt     <- the same report as printed on screen
+  samples.csv            <- the input CSV, or the generated one
+  collect-report.txt     <- the same report as shown in the window
 ```
 
 The CSV and report sit outside `Tech_Spectra` so A.spect's import never sees them.
-The zip is written as `*.partial` and renamed on success. No spectra found → no zip.
+The zip is written as `*.partial` and renamed on success; Cancel or an error removes it.
+No spectra found → no zip.
 
 ## Report
 
-Per sample: window, file count per spectrometer. Warnings for: a sample with no files,
-spectrometers with different counts in one sample, a gap between consecutive files
-longer than 3× the typical interval, an hour with neither an archive nor loose files.
+Per sample: rounded window, file count per spectrometer. Warnings for: a sample with no
+files, spectrometers with different counts in one sample, a gap between consecutive
+files longer than 3× the typical interval, an hour with neither an archive nor loose
+files. After success: the zip path and an "Open folder" button.
 
-Exit codes: 0 done (warnings possible), 2 bad arguments or CSV, 3 nothing found,
-1 unexpected error.
+## Window
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ▌SpectraCollector                                            │
+│ ▔▔▔▔▔▔▔▔▔▔▔▔▔▔ spectrum band (progress) ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔ │
+│ Samples        [ From CSV file | Single interval ]           │
+│                CSV file  [D:\samples.csv            ] Browse │
+│           or:  Begin [2026-11-06 13:30:30]                   │
+│                End   [2026-11-06 13:40:01]                   │
+│                Files from 13:30:00 to 13:41:00               │
+│ Save zip to    [D:\Out                              ] Browse │
+│ Analyzer data  D:\LyncisAC_DATA\<month>\Main\Belt_1   Change │
+│                                     [Cancel] [Collect spectra]│
+│ ──────────────────────────────────────────────────────────── │
+│ S01   13:05:00–13:12:00   Spectra_0  43   Spectra_1  43      │
+│ S02   13:20:00–13:28:00   Spectra_0  49   Spectra_1  47   ⚠  │
+│ Saved D:\Out\spectra_2026-11-06_1305.zip        Open folder  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Look
+
+Subject: a field tool on an analyzer PC at a mine or cement plant; one job, done a few
+times a month. Quiet, industrial, legible — one memorable element.
+
+- **The memorable element:** a 4 px spectrum band under the title — violet → blue →
+  green → yellow → orange → Lyncis red. Idle it is faint (30 % opacity); while
+  collecting it fills left to right as the progress bar. Nothing else is decorative.
+- **Colour:** Ink `#1C2630` (text, primary button), Graphite `#556270` (secondary
+  text), Mist `#EEF1F4` (window), Surface `#FFFFFF` (inputs, report), Rule `#D3DAE0`
+  (borders), Lyncis red `#DA291C` (title mark and band end only — never a button, it
+  reads as danger). Status: warning `#B26A00`, error `#B42318`, success `#1F7A4D`.
+  Band stops: `#6A3FB5 #2D6CDF #1E9E6A #E0B000 #E0661B #DA291C`.
+- **Type:** Bahnschrift (ships with Windows 10+, DIN-like) for the title, times and
+  counts; Segoe UI for labels and text. Sentence case, no all-caps labels.
+- **Layout:** one left-aligned column, labels in a fixed 130 px column, 8 px grid,
+  4 px corner radius on inputs and buttons, no shadows, no cards. Window 780×700,
+  resizable, minimum 680×560. Visible keyboard focus (2 px Ink outline).
+- **Copy:** plain verbs — "Collect spectra", "Collecting…", "Saved", "Open folder";
+  errors say what is wrong and what to do ("End is earlier than Begin.").
+
+## Installer
+
+- NSIS `SpectraCollector-Setup.exe`, per-user install into
+  `%LOCALAPPDATA%\Programs\SpectraCollector` — no administrator rights needed.
+- Components page: "Desktop shortcut" (checked by default); Start menu shortcut always;
+  uninstaller listed in Windows "Apps".
+- Also shipped: the standalone `SpectraCollector.exe` (same file the installer copies).
 
 ## Approaches considered
 
-- **C# console exe, self-contained single file (chosen)** — Vlad asked for C#; no .NET
-  install on the analyzer PC; parameters fit scripting and a pasted command line.
-- PowerShell script — no build step, but not what was asked and harder to test.
-- Windows app with a form — more work, and parameters were asked for.
+- **WPF app + NSIS installer, built in containers on lyncis-dev (chosen).** WPF
+  publishes for Windows from Linux (checked: single exe ≈ 65 MB); NSIS builds natively
+  on Linux (checked: makensis 3.11) and gives the checkbox.
+- MSI via `wixl` — builds on Linux but has no installer dialogs, so no checkbox.
+- Inno Setup under Wine — needs a ~2 GB image; lyncis-dev has 4.6 GB free.
+- WinForms — has a ready date-time picker but looks dated and resists styling.
 
 ## Builder's calls (Claude)
 
-- .NET 10, `win-x64`, self-contained, single file, trimmed; no runtime dependencies
-  beyond the BCL (`System.IO.Compression`); xUnit for tests.
-- Code, messages and docs in English (Lyncis code-language rule).
+- .NET 10. Core logic in a `net10.0` library, tested with xUnit on Linux; the WPF app
+  (`net10.0-windows`) is a thin shell over it. The window can only be checked on Windows.
+- Collection runs on a background task with progress and cancellation; closing the
+  window during a run cancels it and waits for it to finish.
+- Settings (last CSV, output folder, data folder, belt, mode) in
+  `%LOCALAPPDATA%\SpectraCollector\settings.json`.
+- Code, UI text and docs in English (Lyncis code-language rule).
 - Assumptions to confirm on a real analyzer: spectra end in `.csv`; archive hour names
   use the same local time as file names.
